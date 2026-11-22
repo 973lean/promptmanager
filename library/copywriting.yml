@@ -1,0 +1,181 @@
+# Copywriting: part of the Prompt Manager library (Import → Load my library)
+matches:
+- trigger: '555'
+  replace: |+
+    High quality iterations based on this idea, script, visual, or line. No commentary, preamble, or verdicts. With at least 3 variations and a maximum of 8, ideally 3-5. Keep each variation at the same depth and scope as the original, and make each one a meaningfully different take, not a reworded copy:
+    _____________________________________
+
+- trigger: ":UTShook"
+  replace: |
+    # Hook Writing Context Sheet Every hook must pass all seven principles below. --- ## 1. Clarity, never cleverness **Principle:** A hook is read once, mid-scroll, by someone who owes you nothing, so the only line that works is one they understand without effort. **Why AI does it:** When asked to sound "engaging" or "different," models reach for moves that look like craft (wordplay, rhyme, twists of phrase) because those stand out in the writing they learned from, even though none of it helps a cold viewer understand faster. **Memo:** Say it the plain way first, and if a plainer version of the line exists, the plainer version wins. **Rules:** 1. Write the plainest version of the hook first, and only change a word if the new word is plainer or more specific. 2. No wordplay, puns, rhymes, alliteration, double meanings or "twist" phrasing. 3. Concrete beats abstract: something the viewer can picture beats a concept like "results," "wellness" or "confidence." 4. Specific beats general: a number, a time frame, a body part or a situation, as far as the data supports it. 5. Plain-swap test: rewrite the line in the plainest words you can, and if the plain version says the same thing, use the plain version. **Instructions:** Write the hook as if explaining the ad to a friend in one sentence. If any word is there to sound good rather than to be understood, replace it. --- ## 2. No ambiguity: no unpinned subject and payoff **Principle:** A hook has two anchors, who it's about and what they get, and if either one is loose the viewer has to guess, and a viewer who has to guess moves on. **Memo:** Pin both anchors: the subject is one clearly identified person or customer type, and the payoff is a clearly identified thing, named in words rather than pointed at. **Rules:** 1. Subject pinned: from the words alone, without the visual, the viewer can tell who this is about and whether it's them. 2. Payoff pinned: the result is a named thing, never a placeholder word (it, this, that, something, what happened). 3. One subject and one payoff per hook. 4. Every word has one reading: check each noun and verb for a second meaning. 5. Second-reader test: show the hook to someone who hasn't seen the ad and ask "who is this about, and what do they get?" If their answer doesn't match yours, it's ambiguous. **Examples (fail):** - "This is why everyone's switching" (who, and to what?) - "I finally figured it out" (figured out what?) - "You've been doing it wrong" (doing what?) - "The results shocked me" (which results?) --- ## 3. 6th-grade language **Principle:** Simple words don't make a hook dumb, they make it fast, so the viewer understands it before deciding whether to scroll. **Memo:** Write the way the customer talks to a friend, at a 6th-grade reading level, and check it with a readability tool rather than by feel. **Rules:** 1. Everyday words: use, not utilise; help, not support; stop, not eliminate. 2. Short sentences: one idea per sentence. 3. No jargon, category terms or brand language unless customers use those exact words in their verbatims. 4. Active voice with real verbs: "she stopped" beats "a reduction was achieved." 5. Score it: run the hook through a Flesch-Kincaid checker, and if it's above grade 6, rewrite it. --- ## 4. Curiosity gap: clear and deliberate **Principle:** Curiosity only pulls when the viewer knows exactly what they don't know yet; a vague mystery just confuses them, and a gap nobody planned is usually one the ad never closes. **Memo:** Before writing, decide the one question the hook will leave open and where in the body it gets answered, then write the hook so that question is obvious. **Rules:** 1. One gap per hook. 2. The open question is specific enough that the viewer could say it out loud. 3. The mystery is the answer, never the subject or the topic, which stay pinned (see principle 2). 4. Every gap is closed in the body, because a gap left open breaks trust. 5. Don't give the answer away in the hook. 6. Gap test: write down the question in the viewer's head after the hook and the moment in the body that answers it; if you can't fill in both, the gap isn't deliberate. **Examples (fail):** - "You need to see this" (no question to answer) - "Nobody talks about this" (about what?) - "Wait for it" (for what?) --- ## 5. Payoff matched to ad function **Principle:** The hook makes a promise and the body keeps it; if the hook promises less than the body delivers, the viewer judges the whole ad by the smaller promise and leaves before the bigger one arrives. **Memo:** Work out what the ad as a whole does for the viewer, its function, and make that the hook's payoff, because one part of the body is never the headline. **Rules:** 1. Write or read the body before the hook. 2. State the ad's function in one sentence: "After this ad, the viewer believes / knows / wants ___." 3. The hook's payoff is that sentence in hook form, not a single scene, feature or early result from inside the body. 4. Never promise more than the body and the data support (see principle 7). 5. Match test: show someone the hook, then the full ad, and ask "did the hook sell this short?" If yes, rewrite. --- ## 6. Flows into the start of the body **Principle:** The viewer stays only if the body's first line feels like the next sentence of the hook; a jump, a reset or a re-introduction breaks the thread the hook just pulled. **Memo:** Read the hook's last line and the body's first line out loud as one piece, and if there's a jump in topic, subject, voice or time, rewrite the join until it sounds like one sentence followed by the next. **Rules:** 1. The body's first line picks up where the hook stops: it starts answering the open question, continues the story, or begins the "how." 2. Same subject, same voice (I / she / you) and same tense on both sides of the join. 3. No reset at the start of the body: no re-introducing the subject and no throat-clearing openers ("Okay so," "Let me explain," "Here's the thing"). 4. The body doesn't open on anything the hook didn't set up: no side topic, backstory or brand intro first. 5. Join test: read the hook and the first body line together, and if a stranger would feel a change of topic, rewrite the join. **Examples (fail at the join):** - The hook ends on a named problem, and the body opens on the brand's founding story. - The hook is in "she," and the body opens in "you." - The hook opens a question, and the body opens with an unrelated claim before answering it. --- ## 7. Qualification based on real data **Principle:** Every claim in a hook (who it's for, what the problem is, which words to use, what result to promise) must trace back to real evidence, because a guessed claim is a guess dressed up as fact. **Memo:** Only use claims backed by high-frequency, consensus customer verbatims or by proven winner ads, and attach a link to the source for every claim; no link, no claim. **Allowed sources:** - Customer verbatims (reviews, comments, surveys, support tickets) where the same point comes up again and again across many customers. - Proven winner ads, judged by the account's own performance data. **Banned sources:** - Industry data or benchmarks - Web search - Competitor claims - A single one-off review - Anything guessed, assumed or inferred, by a person or by AI **Rules:** 1. Every claim in a draft hook has a source link next to it. 2. Use the customer's exact words where you can, because the verbatim is the copy. 3. Note how many verbatims back each claim, because one review is an anecdote, not consensus. 4. A proven winner backs its own claims and wording, not new claims you add to a variation of it. 5. If there's no source, don't soften the claim, cut it.
+- trigger: ":hookdifferent"
+  replace: 'As a 9 figure lead creative strategist generates hooks with interesting but uncomplex communicational structures that can use visuals and match the demographic and based on the segment verbatim research. Underneath this first set can you create a ‘novel’ set that is still simple but just communicates a different way that consumers likely have not seen before to stand out on the feed while keeping it simple and relevant.  '
+- trigger: ":hookdirect"
+  replace: "As a 9 figure senior creative strategist and emotional copywriter writing high-converting data-grounded copy. Write 10 simple, direct hooks that qualify the viewer straight away. Start the output with “Segment: [who the segment is, in one line]”. Follow it with a bullet list of the fewest text and visual markers she must see to recognise herself. Then give the first hook. Every hook must: Qualify the segment directly, and some should qualify on an emotional idea. Name the problem plainly: the acne itself (“breakouts”, “pimples”), where it shows (“chin”, “jawline”) and when it hits (“before my period”). Never let a body part or a time stand in for the acne. Open a curiosity gap that the body pays off early, either directly or through a bucket brigade. Lead straight into the body. Be unambiguous, written at a 6th-grade reading level, with no more than 1–2 clauses. Every hook must be high quality, with no filler. If user notes are left empty, focus on the core angle and pay-off of the ad script.\n============= USER NOTES: "
+- trigger: ":clarity"
+  replace: |
+    ## Clarity over cleverness Principle: clarity over cleverness. The line names the outcome figuratively (“get your bed back”) instead of literally (“stop his snoring”), so the viewer has to decode it before they understand it, and in a one-second scroll they won’t. Why AI does it: models are trained heavily on marketing copy that rewards wit, idiom and variation, so when asked for “different variations” they swap literal words for figurative ones to sound fresh, which trades clarity for novelty. The specific failure in that line: the top half named the problem (snoring) but the bottom half switched to a different, implied outcome (the bed) instead of resolving the problem it just raised. Rules to apply universally: Every line names the literal problem and the literal outcome in the customer’s words, with no metaphors, idioms or euphemisms. The payoff must resolve the exact problem the hook raised, using the same noun (snoring → stop the snoring). Ban figurative outcome verbs: reclaim, get back, take back, unlock, finally, transform, game-changer. Ambiguity test: if a line can be read two ways, or a stranger needs a second to get it, cut it. Cold-viewer test: with sound off and one second, a stranger can say who the ad is for and what problem it solves. Instructions Write every hook literally. Name the exact problem and exact outcome in plain words the customer would use. No metaphors, idioms, wordplay or implied outcomes. The payoff must resolve the same problem the hook raised. If a line needs interpreting, rewrite it.
+- trigger: ":transition"
+  replace: |
+    I'll paste an ad script or excerpt and name the one seam I want to transition across (e.g. hook → problem mechanism, mechanism → product intro, product → close). Give me the 5 strongest transitional concepts for that seam. For each one, give the concept name, one line on why it works here, and a copy example ready to drop in, written in the script's voice. WHAT A GOOD TRANSITION DOES A transition works when it moves the viewer to the next beat while keeping the story's momentum and its "real story, not an ad" frame (think native sales-letter frames like "my wife told me to share this"). It only needs to be plausible and functional, not clever. Polished-but-salesy is worse than simple-but-natural. CORE TECHNIQUES (combine them; invent new ones if they fit better) 1. Authority transfer: a credible person delivers the next claim instead of the narrator (relative, specialist, insider, podcast host). "But here's what I learned from my son's occupational therapist…" 2. Open loop: say something specific is coming without revealing it. "The first thing Korean women learn is…" / "What if coloring your greys was as simple as washing your hair? Meet…" 3. Causal link: present the next beat as the result of the last one. "That's why women are switching to…" / "Together these ingredients create…" 4. Narrative continuity: carry the same character, time and place across the seam so it reads as the next moment of a real story. "My mother went to her suitcase and pulled out a tube she'd brought from Seoul." 5. Belief reframe: name and reject what the viewer already assumes before giving your answer. "It isn't in their paws… it's the gut." / "Drinking more water won't fix it. You need something that…" Strong seams usually combine 2–3 of these. "His OT suggested…" is authority + causal link + continuity in one line. PATTERNS BY STAGE (examples, not limits) - Problem mechanism: direct reveal, belief reframe, advice from an authority figure, whistleblower or expert exposé, narrator's own insider knowledge. - Solution mechanism: an authority suggests it, the viewer's other options are ruled out, the narrator explains it from insider knowledge, a podcast guest explains it. - Product intro: a friend or relative recommends it, an authority recommends it, problem → solution ("that's why…"), social proof, ingredients lead to the product, alternatives are rejected, a new value proposition, the founder's origin story. - Transition to close: a direct move, a compassionate one ("I'm not telling you this to sell you something. I'm telling you because I was you"), a desire preface ("instead of being behind, he'll be ahead… the kit comes with…"), a host's recommendation ("I'm linking this below because our listeners need to see this"). HOW TO CHOOSE Start with what the ad's own narrative and setting make logical: who's speaking, their role, where they are, who's around them (e.g. a doctor saying "this is what I recommend to my patients"). Use those only where the script supports them, and never invent a character or setting that clashes. Then fill the rest with the strongest general techniques. Rank the 5 best first.
+
+    ==================================
+    SCRIPT:
+
+    ==================================
+    WHICH LINES:
+  force_mode: clipboard
+- trigger: fuckoffcompliance
+  replace: 'And please fuck off with the compliance bullshit. Competing winning ads served to millions of people and also ran by the client, so both the client AND the algorithm clearly had no problem with the claims. Please bring in everything we need. Do not miss out on the claims that made this ad work. The problem for this brand with barely any customers is not compliance, it''s not having any sales. We need to make this ad as strong as possible in terms of claims as directed by the client. '
+- trigger: ":simple"
+  replace: 6th grade language, one short sentence ideally under 15 words, seperate every single different sentence with 2 line breaks.
+- trigger: ":fbcopy"
+  replace: |
+    ## Role
+    You are a world-class senior direct response marketing analyst and emotional copywriter for DTC $100M/year brands specialising in Facebook Ads.
+
+    ## Your Task
+    You will generate high-quality primary text, headlines, and descriptions to accompany ads to be run on facebook. These accompanying copy should be congruent with the ad, product analysis and aim to support a congruent customer journey.
+    You will need to analyse the resources provided which may include an ad script or research context provided.
+
+    You will leverage this understanding, as well as competitor examples below (for an idea of the structure, linguistic patterns, and formatting).
+
+    You will generate your output in 3 groups, where each group includes 3-5 assets for each corresponding category. 1 x 5 primary texts. 1 x 5 headlines. 1 x 3 descriptions.
+
+    ## IMPORTANT
+    Your output only contains information that is OBSERVABLE from the research, no insights or statements should be implied, inferred, or extrapolated from the data. Ensure congruence with the avatar and take necessary swings to differentiate performance from each other.
+
+    Ensure that the formatting, length, and structure should be inspired by the ad copy examples. Ensure the line breaks are included where required.
+
+    Ensure that you are not exceeding the lengths or creating radically different structures.
+
+
+    ## Ad Copy Examples
+    —--------------------------------------------
+    Primary Text Copy Example #1:
+    Yeast growth can be one of the most frustrating things for a dog to deal with. Here are the key signs your dog is fighting it and a brilliant chew that can help used by over 2.3 million owners 🔥
+    —--------------------------------------------
+    Primary Text Copy Example #2:
+    Shop the best-selling wallet of all time and choose from over 30+ colors and styles.
+    ✔️ AirTag Tracking
+    ✔️ Lifetime Warranty
+    ✔️ Cash Strap or Money Clip
+    ✔️ Ultra-Slim, Minimal Design
+    ✔️ RFID Blocking Technology
+    "Slim yet expandable, low profile, but fully featured.” - GQ
+    Free Shipping & Returns | 99 Day Risk-Free Trial
+    Find Your Ridge Today.
+    —--------------------------------------------
+    Primary Text Copy Example #3:
+    "2 Drops and he can't keep his hands off me! 😍"
+
+    ✅ Become irresistible to him
+    ✅ Synergizes with your natural scent
+    ✅ Lasts up to 12 hours
+    ✅ AND MORE...
+
+    👇  Click below and get 50% OFF
+    —--------------------------------------------
+    Primary Text Copy Example #4:
+    Meet the Pumpkin Enzyme Mask from DRMTLGY. It's like comfort food for your face. ✨
+    ✔️ Reduces the appearance of pores
+    ✔️ Hydrates, cleanses and gently exfoliates
+    ✔️ Compliments anti-aging or acne regimens
+    60 Day Money Back Guarantee
+    —--------------------------------------------
+    Primary Text Copy Example #5:
+    Thousands of US dog parents can’t get enough of this clinically-studied* dog dental powder!
+
+    🐶 Shown to reduce a bad breath-causing compound in 28 days
+    🦷 Targets tartar in hard-to-reach places
+    ⭐️ PetLab Co. has helped millions of dogs across the U.S.!
+
+    PetLab Co. has helped millions of dogs across the U.S.! Why not join them?
+    —--------------------------------------------
+    Primary Text Copy Example #6:
+    How I got my waistline back at 55! 👀 (without keto, crunches, or cutting carbs) Here’s how 👇 ...
+    All I did was roll out of bed, pop two tiny capsules into my mouth...
+    And my whole body started shrinking…
+    Day 1: Felt calm and in control
+    Day 7: My jeans felt loose
+    Day 21: Down 13 lbs—and finally loving how I look!!!
+    I can’t believe I’m the “skinny friend” again 😂 I’m the only one not drinking DIET soda.
+    👇 Try Over 30 Hormone Support today (sold out 3x for a reason)
+    ✅ 180-day money-back guarantee
+    —--------------------------------------------
+    Headline Example #1
+    Meet the probiotic chew that targets yeast in dogs - fast
+    —--------------------------------------------
+    Headline Example #2
+    Try the Internet’s Favorite Weighted Blanket
+    —--------------------------------------------
+    Headline Example #3
+    Pediatric OT Recommended TraceTrek™️ Workbooks
+    —--------------------------------------------
+    Headline Example #4
+    Liquid Lash Extensions Mascara™ 🏆
+    —--------------------------------------------
+    Headline Example #5
+    SculptWaver + Free Gifts
+    —--------------------------------------------
+
+
+    ## Your Format
+
+    # Primary Text
+
+    Variation 1 – {swing_idea}
+    > copy
+    …
+    Variation 5 – {swing_idea}
+    > copy
+
+    # Headlines
+
+    Variation 1 – {swing_idea}
+    > copy
+    …
+    Variation 5 – {swing_idea}
+    > copy
+
+    # Descriptions
+
+    Variation 1 – {swing_idea}
+    > copy
+    …
+    Variation 5 – {swing_idea}
+    > copy
+
+    ## Principles
+    PRIMARY TEXT
+    Goal: entice people to learn more from the creative, OR supply information the creative lacks if none is provided inside it
+    Example (product): "Secure setup, vast shade. Choose Beach Shade Cordless, your windproof beach solution!"
+    Example (curiosity/fear): "Denied! This little-known change in Medicare has put thousands of Americans at risk of financial hardship."
+    HEADLINE
+    Goal: give a reason to click the CTA button (not to summarize the ad)
+    Example (protection angle): "Protect Yourself From Surprise Ambulance Bills"
+    Example (aspiration angle): "Upgrade Your Summer Wardrobe Today"
+    CONGRUENCE RULE (OTHER NOTES)
+    Creative, primary text, and headline must all align on the same five dimensions: persona, desire, benefit, market awareness, market sophistication
+    Everything must be congruent to maximize success — mismatched elements kill performance
+
+
+    ## Key Constraints
+    Ensure that all of the copy sets follow differing formats. For example, it could be purely 2 sentences. It could have emojis / no emojis. It uses bullet points or omits them. Headlines can be directed to the CTA such as “Unlock flawless legs today” as an example, or it can be an offer “45% off with free shipping”. Primary text can be short just 2 sentences. It can be longer, up to 150 words. Understand that copy is not meant to be a rigid design but is flexible for deliberate intents to connect with our audience and provide them value. But it must always be related to the ad concept and consider the ideal segment that we care about. It must not deviate from being data-grounded.
+
+    ## Final Instructions
+    Do not focus on ‘features’ or ‘objection-handling’ as a core angle. Every variation's {swing_idea} must be a core desire, emotional angle, or narrative tease / summary — never a feature or an objection. Features and reassurances may appear as supporting detail inside copy, but they can never be the thing a variation is built around. Generate the most logical, objective, effective choice to accompany this advertisement. Please now analyse the attached files as required and the ad copy examples provided above. Once you have completed this immediately generate your output.
+
+    Make the copy the core angle of the ad script message, narrative, or hook, don’t make it about random objection-handling, surface level product features, or content irrelevant to the MAIN message of the ad.
+    __________________________________
+
+    ## SCRIPT:
+- trigger: ":3v"
+  replace: "High quality iterations based on this idea. If Idea/Change to make is left blank you need to be logical about what user is asking for, usually refinement and grammar. Need 3 vars:\n[IDEA & CHANGE TO MAKE: __________________]\nDATA OR SCRIPT EXCERPT: "
+- trigger: ";vv"
+  replace: 'High quality iterations based on this idea, script, visual, or line. No commentary, preamble, or verdicts. With at least 3 variations and a maximum of 8, ideally 3-5. Varying depth and scope in order, going from absolute minimal viable all the way to most in-depth:'
+- trigger: ":hooks"
+  replace: |
+    ## ROLE + TASK CONTEXT You are a senior direct-response creative strategist who diagnoses an existing ad script and writes 10–15 hook variations to test against it; be decisive and specific — name what the script is doing, not what it could be. ## INPUT/DYNAMIC CONTENT You receive one ad script (spoken lines, on-screen text, or both; may include scene notes) and, optionally, past winning hooks the user attaches after you request them. Expect scripts that never state their awareness level, segment or narrative outright — infer them. ## STEP-BY-STEP INSTRUCTIONS (1) Read the full script before analysing anything. (2) Identify the awareness level (Unaware, Problem-aware, Solution-aware, Product-aware, Most-aware) from where the script starts and how late it introduces the product. (3) Identify the segment: the specific person the script pins — their situation, pain, desire and failed past solutions — in the script's own language. (4) Identify the narrative: the story or argument spine in one phrase (e.g. "failed fix → hidden root cause → new mechanism"). (5) Judge whether steps 2–4 are clear. If the awareness level or segment is genuinely ambiguous, or the script is too thin to anchor 10 distinct hooks, output only the request sentence defined in OUTPUT FORMAT and stop. Do not request hooks when the script is clear enough to work from. (6) If past winning hooks are attached, extract their shared patterns (attention trigger, length, voice, structure) and apply those patterns without copying lines. (7) Write 10–15 hooks, every one matching the script's awareness level and segment, each taking a different angle. Draw angles from: failed solutions, root-cause reveal, belief flip, specific pain moment, desired outcome, peer confession, enemy/villain, forbidden information, unfinished story, social proof, identity callout, cost of waiting. Use only angles that fit the awareness level. (8) Make every hook do three jobs: pin the segment ("this is me"), state a payoff (what they gain or escape), and open a curiosity gap that the script's main narrative pays off. The hook must promise what the majority of the script delivers, never a detail, claim or tangent that appears only once or briefly in the body. (9) Prefer pain, fear and identity triggers over plain curiosity when the script supports them. (10) Reuse the script's specifics — numbers, timeframes, failed products, customer phrasing — over generic wording. (11) Give each hook a 1–3 word header in sentence case naming its strategic direction. (12) Draft one strategy sentence per hook stating the lever it pulls and why it suits this awareness level and segment; hold these, plus the awareness level, segment and narrative, internally and output them only if the user asks. (13) Order hooks from closest to the original script's angle to furthest. (14) Check every hook against the guardrails and rewrite any that fail. (15) After the main list, write a separate set of 5 structural variations. Take the core idea of 5 different hooks from the main list and rebuild each one with a significantly different communicational structure, changing how it's said and how it's shown, while keeping the idea direct and instantly clear. Verbal shape: give each variation a different sentence structure (list then loop, verdict first, Q&A, if/then, negation stack, analogy, scene-setting, before vs after, either/or), and never reuse the same opening grammar. Visual shape: give each a different visual format (before/after cut, split screen or side-by-side, result first, POV shot, product or object reveal, reaction shot, text-on-screen only, opening mid-action, creator over proof), and never reuse the same visual setup. Pairing: the verbal and visual shapes must reinforce each other, never compete. Clarity: structure changes the delivery, not the message. Keep one idea per hook, understood in the first 2–3 seconds even with sound off, and cut any framing that's clever but hides the point. Every variation must still pin the segment, state a payoff, and promise what the majority of the script delivers. ## EXAMPLES Input script: "I've bought three cooling pillows and still wake up at 3am soaked. Turns out the pillow was never the problem — it's the heat your mattress topper traps under your back. This mat sits under your sheet and pulls heat away all night. First night, I slept through. 30-night trial, link below." Output: ## 1. Failed fixes "Three cooling pillows later, I was still waking up soaked at 3am." ## 2. Root cause "The reason you wake up drenched has nothing to do with your pillow." ## 3. Pain moment "3am. Drenched. Changing the sheets in the dark. Again." ## 4. Desired outcome "The first night I slept straight through without changing the sheets." […hooks 5–12 continue in the same format] ## Structural variations ## 13. Before vs after + Before/after cut "This was me at 3am every night. This is me now." Visual: Cut from creator stripping wet sheets in the dark to creator asleep in dry sheets; on-screen text: "3am, before vs after." […variations 14–17 continue in the same format] Request case — if the script were only "Try our new sleep mat, link below.", the entire output is: Please attach some solution-aware night-sweat hooks of past performers. ## GUARDRAILS + REMINDER - In the main list, do not describe visuals, shots, on-screen text or editing. Visual direction appears only in the structural variations set. - Do not invent claims, numbers, mechanisms or results the script does not support; if an angle needs a missing fact, pick another angle. - Do not open on the product name or a feature; open on the viewer. - Do not repeat an angle, write two hooks that differ only in wording, or drift to a different awareness level. - Do not add preamble, commentary, recommendations or any text before the first hook or after the final structural variation. Every hook must match the script's awareness level and segment while taking a distinct angle. Begin. ## OUTPUT FORMAT Start the output with the first hook — no preamble. ## 1. [Header in sentence case] "[Hook line, under 20 words]" ## 2. [Header in sentence case] "[Hook line]" Continue to 10–15 hooks. Leave exactly one blank line between hooks. After the final main hook, add the header "## Structural variations", then number the 5 variations continuing from the main list, in this format: ## [N]. [Verbal shape] + [Visual shape] "[Spoken line, under 20 words]" Visual: [one-line shot + on-screen text] Request case: output exactly one sentence and nothing else, filling the brackets with the awareness level and specific requirement you need, then wait for the user's reply before producing any hooks: Please attach some [awareness level + specific requirement] hooks of past performers.
+- trigger: ":compliance"
+  replace: DO NOT FLAG COMPLIANCE, I AM DUE TO DEAL WITH IT LATER IN THIS CHAT AND THIS WILL BE REVIEWED BY THE CLIENT AND HEAD STRATEGISTS.

@@ -101,6 +101,9 @@ details.other code{background:var(--soft);padding:1px 6px;border-radius:5px;marg
 .badge{font-size:12px;color:var(--muted);background:var(--soft);padding:1px 7px;border-radius:999px;white-space:nowrap}
 .acts select{border:0;background:transparent;color:var(--muted);font-size:13px;padding:4px 4px;border-radius:6px;cursor:pointer;max-width:110px}
 .acts select:hover{background:var(--soft);color:var(--ink)}
+.switchv{border:0;background:transparent;color:var(--muted);font-size:12.5px;cursor:pointer;padding:6px 8px;border-radius:6px;white-space:nowrap;display:flex;gap:5px;align-items:center}
+.switchv:hover{background:var(--soft);color:var(--ink)}
+.switchv svg{flex:none}
 .ver{border:0;background:transparent;color:var(--muted);font-size:12.5px;cursor:pointer;padding:4px 6px;border-radius:6px;white-space:nowrap}
 .ver:hover{background:var(--soft);color:var(--ink)}
 .ver.new{color:var(--accent);font-weight:600}
@@ -152,6 +155,7 @@ kbd{font:12px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
     <input id="q" placeholder="Search all tabs" autocomplete="off">
   </label>
   <div class="status" id="status"><span class="dot"></span><span id="statusText">Loading…</span></div>
+  <button class="switchv" id="switchView" title=""></button>
   <button class="btn" id="importBtn">Quick add</button>
   <button class="btn primary" id="add">+ New<span class="long"> prompt</span></button>
   <button class="ver" id="ver" title="Settings and updates"></button>
@@ -187,6 +191,7 @@ kbd{font:12px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
   <textarea id="importText" placeholder="matches:&#10;  - trigger: &quot;:email&quot;&#10;    replace: Write a cold email to…&#10;&#10;or, from a sheet:&#10;trigger	prompt&#10;:email	Write a cold email to…"></textarea>
   <p id="importInfo">Nothing to import yet.</p>
   <div class="row"><span class="grow">Into <select id="importTab"></select></span>
+    <button class="btn" type="button" id="libBtn" title="Your prompt library from GitHub, sorted into tabs">Load my library</button>
     <label class="btn">Open file<input type="file" id="importFile" accept=".yml,.yaml,.csv,.tsv,.txt" hidden></label>
     <button class="btn" value="cancel">Cancel</button>
     <button class="btn primary" id="importGo" value="go" disabled>Import</button></div>
@@ -217,7 +222,7 @@ async function api(path, body) {
   return {status: r.status, data: await r.json()};
 }
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
-const tabName = n => n === "base.yml" ? "General" : (n => n.charAt(0).toUpperCase() + n.slice(1))(n.replace(/\.ya?ml$/, "").replace(/[-_]+/g, " "));
+const tabName = n => n === "base.yml" ? "General" : n.replace(/\.ya?ml$/, "").replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 const slug = t => t.trim().toLowerCase().replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-").slice(0, 60);
 const fileOf = n => files.find(f => f.name === n);
 const cur = () => fileOf(active) || files[0];
@@ -457,12 +462,13 @@ function unmojibake(str, stats) {
 const fixDeep = (v, st) => typeof v === "string" ? unmojibake(v, st) : Array.isArray(v) ? v.map(x => fixDeep(x, st))
   : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, fixDeep(x, st)])) : v;
 
-function readYaml(text) {
+function readYaml(text, opts = {}) {
   let doc;
   try { doc = jsyaml.load(text); } catch (e) { return {list: [], note: "That looks like an espanso file, but it has a YAML error: " + e.message.split("\n")[0]}; }
   const st = {fixed: 0, garbled: 0}, list = [], have = new Map(), renamed = [], empty = [];
   let same = 0, advanced = 0;
-  allItems().forEach(it => trigsOf(it).forEach(t => have.set(t, it.body)));
+  const owner = new Map();
+  allItems().forEach(it => trigsOf(it).forEach(t => { have.set(t, it.body); owner.set(t, it); }));
   for (const m0 of Array.isArray(doc?.matches) ? doc.matches : []) {
     if (!m0 || typeof m0 !== "object") continue;
     const m = fixDeep(m0, st);
@@ -471,21 +477,26 @@ function readYaml(text) {
     if (!m.replace.trim()) { empty.push(trigs[0]); continue; }
     let t = trigs[0];
     if (have.has(t)) {
-      if (have.get(t) === m.replace) { same++; continue; }  // exact copy: skip
+      const norm = x => unmojibake(x, {fixed: 0, garbled: 0}).replace(/\s+/g, " ").trim();
+      if (have.get(t) === m.replace || (opts.moveSame && norm(have.get(t)) === norm(m.replace))) {
+        // same prompt: skip it, or (library) move yours into the library's tab and take the repaired text
+        if (opts.moveSame && owner.get(t)) list.push({moveItem: owner.get(t), group: opts.group, body: m.replace});
+        same++; continue;
+      }
       let n = 2; while (have.has(`${t}-${n}`)) n++;          // same trigger, different prompt: keep both
       renamed.push(`${t} → ${t}-${n}`); t = `${t}-${n}`;
     }
     const extra = trigs.slice(1).filter(x => !have.has(x));
     [t, ...extra].forEach(x => have.set(x, m.replace));
     const rest = {...m}; for (const k of ["trigger", "triggers", "label", "replace"]) delete rest[k];
-    list.push({trig: [t, ...extra].join(", "), label: m.label || "", body: m.replace, m: rest, group: ""});
+    list.push({trig: [t, ...extra].join(", "), label: m.label || "", body: m.replace, m: rest, group: opts.group || ""});
   }
-  const n = list.length - advanced, bits = [];
+  const moved = list.filter(r => r.moveItem).length, n = list.length - advanced - moved, bits = [];
   bits.push(n || advanced ? `${n} prompt${n === 1 ? "" : "s"}${advanced ? ` and ${advanced} advanced match${advanced === 1 ? "" : "es"}` : ""} to import.` : "Nothing new to import.");
   if (st.fixed) bits.push(`Repaired garbled characters (like â€” → —) in ${st.fixed} place${st.fixed === 1 ? "" : "s"}.`);
   if (st.garbled) bits.push(`${st.garbled} garbled character${st.garbled === 1 ? "" : "s"} couldn't be repaired; fix them by hand after importing.`);
   if (renamed.length) bits.push(`Already used, so renamed: ${renamed.join(", ")}.`);
-  if (same) bits.push(`${same} skipped (already in your list).`);
+  if (same) bits.push(opts.moveSame ? `${same} already in your list${moved ? " (moved into their tabs)" : ""}.` : `${same} skipped (already in your list).`);
   if (empty.length) bits.push(`Skipped because the prompt is empty in the file: ${empty.join(", ")}.`);
   return {list, note: bits.join(" ")};
 }
@@ -512,7 +523,25 @@ function readRows(text) {
   return {list: fresh, note: fresh.length ? `${fresh.length} prompt${fresh.length === 1 ? "" : "s"} to import${groups.size ? ` into ${groups.size} tab${groups.size === 1 ? "" : "s"}` : ` into ${tabName(cur().name)}`}${list.length - fresh.length ? `, ${list.length - fresh.length} skipped (trigger already exists)` : ""}.` : list.length ? "All of these triggers already exist." : "No rows with both a trigger and a prompt."};
 }
 let pending = [];
-const preview = () => { const r = readRows($("#importText").value); pending = r.list; $("#importInfo").textContent = r.note; $("#importGo").disabled = !pending.length; };
+let libMode = false;
+$("#libBtn").onclick = async () => {
+  const b = $("#libBtn"); b.disabled = true; b.textContent = "Loading…";
+  try {
+    const {status, data} = await api("/api/library", {});
+    if (status !== 200) throw new Error(data.error);
+    pending = []; const notes = [];
+    for (const t of data.tabs) { const r = readYaml(t.text, {group: t.tab, moveSame: true}); pending.push(...r.list); notes.push(`${t.tab}: ${r.list.filter(x => !x.moveItem).length} new`); }
+    libMode = true; $("#importText").value = "";
+    const target = g => fileOf(slug(g) + ".yml") || (g.toLowerCase() === "general" ? fileOf("base.yml") : null);
+    pending = pending.filter(r => !r.moveItem || r.moveItem.f !== target(r.group) || r.moveItem.body !== r.body);
+    const fresh = pending.filter(r => !r.moveItem).length, moves = pending.length - fresh;
+    $("#importInfo").textContent = !pending.length ? "You already have your whole library." :
+      `Your library, sorted into tabs. ${notes.join(" · ")}.${moves ? ` ${moves} prompt${moves === 1 ? "" : "s"} you already have will move into ${moves === 1 ? "its tab" : "their tabs"}.` : ""}`;
+    $("#importGo").disabled = !pending.length;
+  } catch (e) { $("#importInfo").textContent = "Couldn't load your library: " + e.message; }
+  b.disabled = false; b.textContent = "Load my library";
+};
+const preview = () => { libMode = false; const r = readRows($("#importText").value); pending = r.list; $("#importInfo").textContent = r.note; $("#importGo").disabled = !pending.length; };
 const openSheet = () => {
   $("#importText").value = ""; preview();
   $("#importTab").innerHTML = files.map(f => `<option value="${esc(f.name)}"${f === cur() ? " selected" : ""}>${esc(tabName(f.name))}</option>`).join("") + `<option value="__new">New tab…</option>`;
@@ -549,6 +578,7 @@ $("#importDlg").onclose = async () => {
   for (const r of pending) {
     const f = r.group ? (fileOf(slug(r.group) + ".yml") || (r.group.toLowerCase() === "general" ? fileOf("base.yml") : await newTab(r.group))) : fileOf(keep);
     if (!f || f.readonly) continue;
+    if (r.moveItem) { if (r.body && r.moveItem.body !== r.body) { r.moveItem.body = r.body; touched.add(r.moveItem.f); } if (r.moveItem.f !== f) { const from = r.moveItem.f; from.slots.splice(from.slots.indexOf(r.moveItem), 1); r.moveItem.f = f; touched.add(from); f.slots.push(r.moveItem); touched.add(f); } continue; }
     f.slots.push(r.raw !== undefined ? {raw: r.raw} : {id: ++uid, f, m: r.m || {}, trig: r.trig, label: r.label, body: r.body}); touched.add(f);
   }
   touched.forEach(f => changed(f, true));
@@ -597,6 +627,23 @@ async function restartApp() {
   await api("/api/restart", {}); setStatus("Restarting…", "saving");
   setTimeout(function retry() { fetch("/").then(() => location.reload(), () => setTimeout(retry, 400)); }, 700);
 }
+
+// ---------- switch between app window and a Chrome tab ----------
+const inWindow = () => matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: minimal-ui)").matches || !window.locationbar.visible;
+const ICON_TAB = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>`;
+const ICON_WIN = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg>`;
+function paintSwitch() {
+  const w = inWindow(), b = $("#switchView");
+  b.innerHTML = w ? `${ICON_TAB}<span class="long">Open in Chrome</span>` : `${ICON_WIN}<span class="long">Open as window</span>`;
+  b.title = w ? "Move to a normal Chrome tab" : "Move to its own app window (no tabs or address bar)";
+}
+$("#switchView").onclick = async () => {
+  if (files.some(f => f.dirty || f.saving)) return toast("Still saving, try again in a second.");
+  const toWindow = !inWindow();
+  await api("/api/open", {mode: toWindow ? "window" : "tab"});
+  setTimeout(() => { window.close(); toast(toWindow ? "Opened as a window. You can close this tab." : "Opened in Chrome. You can close this window."); }, 400);
+};
+paintSwitch(); addEventListener("resize", paintSwitch);
 
 // ---------- ui bits ----------
 function setStatus(t, cls = "") { $("#statusText").textContent = t; $("#status").className = "status " + cls; }

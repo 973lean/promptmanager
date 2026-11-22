@@ -7,6 +7,8 @@ A tiny, instant editor for your espanso prompts. Type, and the prompt is live in
 - **Import from Google Sheets:** copy your rows (with the header row) and paste them. CSV files work too. Columns: `trigger`, `prompt`, `label`, `group` (each group becomes a tab).
 - **Auto-update:** it checks this repo when it starts and installs new versions in the background. You can also check by hand from the version button (top right). Updates never touch your prompts.
 - **Safe:** saves are atomic and each file gets a `.bak` backup on the first save. Matches with variables, regex or forms are kept untouched. A YAML error pauses editing instead of overwriting.
+- **Your library:** **Quick add → Import many → Load my library** pulls the prompt library in [`library/`](library) into tabs (General, Copywriting, Creative Strategy, Formatting, Metaprompts, Study) on any computer. Prompts you already have are matched up and moved, not duplicated.
+- **Switch view:** the small button next to **Quick add** moves you between the app window and a normal Chrome tab, and remembers your choice.
 - **Find anything:** search across all tabs (Ctrl/Cmd+K), a sidebar per tab, and espanso's own search (Alt+Space) in any app.
 - **Refine:** one click copies a prompt-improver for Claude. With an API key, it rewrites the prompt in place, with Undo.
 

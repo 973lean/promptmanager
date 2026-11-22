@@ -1,0 +1,103 @@
+# General: part of the Prompt Manager library (Import → Load my library)
+matches:
+- trigger: 0w
+  replace: 0 words
+- trigger: plus
+  replace: "+"
+- trigger: ":1"
+  replace: 1️⃣
+- trigger: ":2"
+  replace: 2️⃣
+- trigger: ":3"
+  replace: 3️⃣
+- trigger: ":4"
+  replace: 4️⃣
+- trigger: ":5"
+  replace: 5️⃣
+- trigger: ":cross"
+  replace: "❌"
+- trigger: ":tick"
+  replace: "✅"
+- trigger: ":--"
+  replace: |2+
+
+    _____________________________________
+
+  force_mode: clipboard
+- trigger: ":->"
+  replace: "→"
+- trigger: "<>"
+  replace: "↔"
+- trigger: UMP
+  replace: Unique Mechanism of Problem
+- trigger: UMS
+  replace: Unique Mechanism of Solution
+  force_mode: clipboard
+- trigger: ":UM"
+  replace: Unique Mechanism
+  force_mode: clipboard
+- trigger: ":paste"
+  replace: "    force_mode: clipboard"
+- trigger: "----"
+  replace: "—"
+- trigger: HT
+  replace: HOOK TEXT
+  force_mode: clipboard
+- trigger: no commenta
+  replace: no commentary, no preamble, no postamble, no verdicts, output only
+- trigger: h3
+  replace: "###"
+- trigger: h2
+  replace: "##"
+- trigger: ":wip"
+  replace: "\U0001F6E0️"
+- trigger: ":box"
+  replace: "├──  └──"
+- trigger: ":invis"
+  replace: "⠀"
+- trigger: ":ytdlp-mp3"
+  replace: yt-dlp.exe -i --extract-audio --audio-format mp3
+- trigger: ":ytdlp-mp4"
+  replace: yt-dlp.exe
+- trigger: ":ytdlp-playlist-mp3"
+  replace: yt-dlp.exe -i --extract-audio --audio-format mp3 'HERE'
+- trigger: ":ytdlp-update"
+  replace: yt-dlp.exe -U
+- trigger: ":ty"
+  replace: Thank you 😀
+- trigger: MV
+  replace: IMPORTANTLY MINIMAL VIABLE
+  force_mode: clipboard
+- trigger: ":x"
+  replace: "×"
+- trigger: ":."
+  replace: "•"
+- trigger: ":wa"
+  replace: where applicable
+- trigger: "::"
+  replace: "\U0001F44D"
+- trigger: ":haz"
+  replace: "⚠️"
+- trigger: h4
+  replace: "####"
+- trigger: ":flag"
+  replace: "\U0001F6A9"
+- trigger: ">>"
+  replace: ">###V"
+  force_mode: clipboard
+- trigger: ":red"
+  replace: "\U0001F534"
+- trigger: ":yellow"
+  replace: "\U0001F7E1"
+- trigger: ":green"
+  replace: "\U0001F7E2"
+- trigger: ":()"
+  replace: parenthetical
+- trigger: ":st"
+  replace: "⭐"
+- trigger: B-
+  replace: B-Roll
+- trigger: A-
+  replace: A-Roll
+- trigger: ":fs"
+  replace: Fullscreen

@@ -1,0 +1,45 @@
+# Formatting: part of the Prompt Manager library (Import → Load my library)
+matches:
+- trigger: ":scriptonly"
+  replace: no commentary, no preamble, no postamble, no verdicts, output only. Output only the spoken script, word for word. Do not include labels (Hook, Body, CTA), timestamps, speaker names, visual descriptions, on-screen text, headers or any commentary. Put each sentence or natural spoken phrase on its own line, with a blank line between each line. Do not reword, correct, tighten or restyle anything; keep filler words and the speaker's original phrasing. No commentary, no preamble, no pretext, output only.
+- trigger: ":linebreak"
+  replace: Seperate every single different sentence with 2 line breaks, in the same output format.
+  force_mode: clipboard
+- trigger: ":LLM"
+  replace: |
+    Reformat the content for LLM parsing, not human reading. Strip prose, hedging, narrative. Output dense, unambiguous Markdown: hierarchical headers, key:value pairs, atomic bullet facts, explicit entities/relationships/constraints, no pronouns. Adapt structure to the content type (e.g. study, spec, brief). Preserve all information; maximize parseability, minimize tokens. Return only Markdown.
+- trigger: ":diff"
+  replace: For each line, show unchanged text as-is; for changed portions, wrap the old text in square brackets with strikethrough, immediately follow it with the new text in bold, then add a note in curly braces `{...}` justifying the change — descriptive, not explanatory, 5–6 words max. E.g. [~~old~~] **new** {tightens vague phrasing}.
+- trigger: ":list"
+  replace: |
+    Distill the following text into a lean list of high-ROI practical insights. For each point, use a bold header term followed by a concise, actionable explanation. Ensure no unique value is lost while maintaining maximum brevity.
+
+    Format the output like this in a bullet point list (except for the source title)
+
+    (Source/s: [Author/Source Name])
+
+    - **[Header Term]**: [Insight]
+    - **[Header Term]**: [Insight]
+    ...
+- trigger: ":clean"
+  replace: |
+    You are a efficient, logical notes transcriber and organiser converting screenshots or messy notes into a clean, simple formatted notes. Keep notes verbatim. Structure with bullets. Separate into only header terms and normal text with bullets and numbered lists where necessary. Embolden 'header terms'. No <hr>.
+
+    ____
+
+    Notes:
+- trigger: ":concise"
+  replace: |
+    Prioritize only the most decision-useful or insight-dense information. Keep responses concise and direct, limited to 1–2 sentences whenever possible. Use line breaks between distinct points, bullets, or sentences for readability. Avoid filler, hedging, repetition, summaries, disclaimers, or conversational padding. Do not explain reasoning unless explicitly requested. For the rest of this chat, mandatory. Reply with: “Noted.’
+- trigger: ":grammar"
+  replace: clean up grammar, structure, and format but leave all content and message and even the framing, keep verbatim where applicable, make this presentable.
+- trigger: ":ll"
+  replace: Highly readable, terse response, one medium, concise sentence for each point, 2 line breaks between each point for max readability. No commentary, no banter, no preamble, output only.
+- trigger: ":strip"
+  replace: 'Strip the ad script below down to only the words spoken aloud. Read the whole script first. Remove beat headers and anything on the same line as them, bracketed visual or animation directions, emoji flags, bullet-point production notes, and editor comments. If a line mixes spoken text with a direction, keep only the spoken text. If a line is ambiguous, keep it only if a narrator would say it to the viewer. Copy every kept line exactly as written, including typos and punctuation; do not fix, reword, merge, reorder, or add anything. Put one blank line between former beats and no other blank lines. Output plain text only, starting with the first spoken line and ending with the last, with no preamble or explanation. For example, ''Beat 2: Tease - 🔴 low attention / Trimethylglycine. Sounds boring. / [Zoom into lab] / * add celebrity proof'' becomes only ''Trimethylglycine. Sounds boring.'' Output only the verbatim spoken lines. Begin.'
+- trigger: ":ff1"
+  replace: Output only the spoken script, word for word. Do not include labels (Hook, Body, CTA), timestamps, speaker names, visual descriptions, on-screen text, headers or any commentary. Put each sentence or natural spoken phrase on its own line, with a blank line between each line. Do not reword, correct, tighten or restyle anything; keep filler words and the speaker's original phrasing. No commentary, no preamble, no pretext, output only.
+- trigger: ":mm"
+  replace: Please give me a minimal response with no preamble, commentary, or unnecessary pretext or filler. Repeat for the rest of this chat unless stated otherwise. This does not mean short of quality or forcefully simple. It means concise, high leverage, best quality insight stated tersely and with purpose. Deliberately stripping out any information that does not directly contribute to the user's intended goal. Must also be formatted for maximal readability. The user only spends time easily reading high leverage responses.
+- trigger: ":ff2"
+  replace: 'Output only the spoken script, word for word, grouped under its beat headings. Format each beat as a level-1 markdown heading with the beat name (e.g. # Lead), then a blank line, then that beat''s script. Use the beat names exactly as they appear in the source; do not invent, rename, merge, split or reorder beats. Under each heading, put each sentence or natural spoken phrase on its own line, with a blank line between each line. Do not include any other labels, timestamps, speaker names, visual descriptions, on-screen text, extra headers or commentary. Do not reword, correct, tighten or restyle anything; keep filler words and the speaker''s original phrasing. No commentary, no preamble, no pretext, output only.'

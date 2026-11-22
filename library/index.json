@@ -1,0 +1,34 @@
+{
+  "tabs": [
+    {
+      "file": "copywriting.yml",
+      "tab": "Copywriting",
+      "count": 13
+    },
+    {
+      "file": "creative-strategy.yml",
+      "tab": "Creative Strategy",
+      "count": 15
+    },
+    {
+      "file": "formatting.yml",
+      "tab": "Formatting",
+      "count": 13
+    },
+    {
+      "file": "metaprompts.yml",
+      "tab": "Metaprompts",
+      "count": 19
+    },
+    {
+      "file": "study.yml",
+      "tab": "Study",
+      "count": 10
+    },
+    {
+      "file": "general.yml",
+      "tab": "General",
+      "count": 46
+    }
+  ]
+}

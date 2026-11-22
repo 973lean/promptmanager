@@ -14,7 +14,7 @@ import json, os, platform, re, secrets, ssl, subprocess, sys, threading, time, u
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "1.3.1"
+VERSION = "1.4.0"
 REPO_RAW = os.environ.get("PM_UPDATE_URL", "https://raw.githubusercontent.com/973lean/promptmanager/main/")
 RELEASE = os.environ.get("PM_RELEASE_URL", "https://github.com/973lean/promptmanager/releases/latest/download/")
 FROZEN = getattr(sys, "frozen", False)  # running as PromptManager.exe
@@ -183,29 +183,37 @@ def set_startup(on: bool):
 
 
 # ---------------- open the window ----------------
-def open_ui(url: str):
-    """Open as a clean app window (Chrome or Edge, no address bar) when possible, else a normal tab."""
-    if settings()["app_window"]:
-        try:
-            if os.name == "nt":
-                env = os.environ.get
-                for p in (
-                    Path(env("LOCALAPPDATA", "")) / "Google/Chrome/Application/chrome.exe",
-                    Path(env("PROGRAMFILES", "")) / "Google/Chrome/Application/chrome.exe",
-                    Path(env("PROGRAMFILES(X86)", "")) / "Google/Chrome/Application/chrome.exe",
-                    Path(env("PROGRAMFILES(X86)", "")) / "Microsoft/Edge/Application/msedge.exe",
-                    Path(env("PROGRAMFILES", "")) / "Microsoft/Edge/Application/msedge.exe",
-                ):
-                    if p.is_file():
-                        subprocess.Popen([str(p), f"--app={url}"])
-                        return
-            elif sys.platform == "darwin":
-                for app in ("Google Chrome", "Microsoft Edge"):
-                    if Path(f"/Applications/{app}.app").exists():
-                        subprocess.Popen(["open", "-na", app, "--args", f"--app={url}"])
-                        return
-        except Exception:
-            pass
+def find_browser():
+    """Chrome first, then Edge. Returns ("win", exe path) / ("mac", app name) / None."""
+    if os.name == "nt":
+        env = os.environ.get
+        for p in (
+            Path(env("LOCALAPPDATA", "")) / "Google/Chrome/Application/chrome.exe",
+            Path(env("PROGRAMFILES", "")) / "Google/Chrome/Application/chrome.exe",
+            Path(env("PROGRAMFILES(X86)", "")) / "Google/Chrome/Application/chrome.exe",
+            Path(env("PROGRAMFILES(X86)", "")) / "Microsoft/Edge/Application/msedge.exe",
+            Path(env("PROGRAMFILES", "")) / "Microsoft/Edge/Application/msedge.exe",
+        ):
+            if p.is_file():
+                return ("win", str(p))
+    elif sys.platform == "darwin":
+        for app in ("Google Chrome", "Microsoft Edge"):
+            if Path(f"/Applications/{app}.app").exists():
+                return ("mac", app)
+    return None
+
+
+def open_ui(url: str, mode: str = ""):
+    """mode "window": app window (no tabs/address bar). mode "tab": a normal Chrome tab. "" = the saved setting."""
+    mode = mode or ("window" if settings()["app_window"] else "tab")
+    b = find_browser()
+    try:
+        if b and b[0] == "win":
+            return subprocess.Popen([b[1], f"--app={url}"] if mode == "window" else [b[1], url])
+        if b and b[0] == "mac":
+            return subprocess.Popen(["open", "-na", b[1], "--args", f"--app={url}"] if mode == "window" else ["open", "-a", b[1], url])
+    except Exception:
+        pass
     webbrowser.open(url)
 
 
@@ -316,7 +324,9 @@ class App(BaseHTTPRequestHandler):
             cur = str(f.stat().st_mtime_ns) if f.exists() else "0"
             if b.get("mtime") != cur:
                 return self.send(409, self.state())  # changed on disk since the editor loaded it
-            if f.exists() and f.name not in App.backed_up:
+            if not f.exists():
+                App.backed_up.add(f.name)  # brand-new tab: nothing to back up
+            elif f.name not in App.backed_up:
                 f.with_name(f.name + ".bak").write_bytes(f.read_bytes())
                 App.backed_up.add(f.name)
             atomic_write(f, b["text"])
@@ -357,6 +367,13 @@ class App(BaseHTTPRequestHandler):
             if "startup" in b and os.name == "nt":
                 set_startup(bool(b["startup"]))
             return self.send(200, s)
+        if p == "/api/library":  # your prompt library, from library/ in the GitHub repo
+            idx = json.loads(fetch("library/index.json"))
+            return self.send(200, {"tabs": [{**t, "text": fetch("library/" + t["file"]).decode("utf-8")} for t in idx["tabs"]]})
+        if p == "/api/open":  # also remembered for next launch
+            st = settings(); st["app_window"] = b.get("mode") == "window"; save_settings(st)
+            open_ui(f"http://127.0.0.1:{self.port}/", "window" if b.get("mode") == "window" else "tab")
+            return self.send(200, {"ok": True, "browser": (find_browser() or ("", "your browser"))[1]})
         if p == "/api/quit":
             self.send(200, {"ok": True})
             threading.Timer(0.3, lambda: os._exit(0)).start()
