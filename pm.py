@@ -14,7 +14,7 @@ import json, os, platform, re, secrets, ssl, subprocess, sys, threading, time, u
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "1.4.0"
+VERSION = "1.4.1"
 REPO_RAW = os.environ.get("PM_UPDATE_URL", "https://raw.githubusercontent.com/973lean/promptmanager/main/")
 RELEASE = os.environ.get("PM_RELEASE_URL", "https://github.com/973lean/promptmanager/releases/latest/download/")
 FROZEN = getattr(sys, "frozen", False)  # running as PromptManager.exe
