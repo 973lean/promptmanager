@@ -176,17 +176,18 @@ kbd{font:12px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
   <textarea id="qaBody" placeholder="Paste the prompt here" aria-label="Prompt"></textarea>
   <p id="qaInfo">Goes into the tab below. <kbd>Ctrl</kbd>+<kbd>Enter</kbd> adds it and clears the form for the next one.</p>
   <div class="row"><span class="grow">Tab <select id="qaTab"></select></span>
-    <button class="btn" type="button" id="qaSheet">Paste many from a sheet</button>
+    <button class="btn" type="button" id="qaSheet">Import many</button>
     <button class="btn" type="button" id="qaDone">Done</button>
     <button class="btn primary" type="submit">Add</button></div>
 </form></dialog>
 
 <dialog id="importDlg"><form method="dialog" class="in">
   <h2>Import prompts</h2>
-  <p>In Google Sheets, select your rows (include the header row) and copy, then paste here. A CSV file works too. Recognised columns: <b>trigger</b>, <b>prompt</b>, <b>label</b>, <b>group</b>. Each group becomes a tab.</p>
-  <textarea id="importText" placeholder="trigger	label	prompt	group&#10;:email	Cold email	Write a cold email to…	Sales"></textarea>
-  <div class="row"><span class="grow" id="importInfo">Nothing to import yet.</span>
-    <label class="btn">CSV file<input type="file" id="importFile" accept=".csv,.tsv,.txt" hidden></label>
+  <p>Paste either a whole <b>espanso file</b> (anything starting with <span class="mono">matches:</span>), or rows copied from <b>Google Sheets</b> with a header row (<b>trigger</b>, <b>prompt</b>, optional <b>label</b> and <b>group</b>; each group becomes a tab).</p>
+  <textarea id="importText" placeholder="matches:&#10;  - trigger: &quot;:email&quot;&#10;    replace: Write a cold email to…&#10;&#10;or, from a sheet:&#10;trigger	prompt&#10;:email	Write a cold email to…"></textarea>
+  <p id="importInfo">Nothing to import yet.</p>
+  <div class="row"><span class="grow">Into <select id="importTab"></select></span>
+    <label class="btn">Open file<input type="file" id="importFile" accept=".yml,.yaml,.csv,.tsv,.txt" hidden></label>
     <button class="btn" value="cancel">Cancel</button>
     <button class="btn primary" id="importGo" value="go" disabled>Import</button></div>
 </form></dialog>
@@ -440,7 +441,56 @@ function parseTable(text) {
   return rows.filter(r => r.some(c => c.trim()));
 }
 const COLS = {trig: /trigger|shortcut|keyword|command|abbrev|^key$/, body: /prompt|replace|replacement|expansion|text|content|body|output/, label: /label|name|title|description|desc/, group: /group|tab|category|folder|section|type/};
+// Text that was saved as UTF-8 but read as Windows-1252 turns "—" into "â€”". Undo that where we can.
+const CP = {0x20AC:0x80,0x201A:0x82,0x0192:0x83,0x201E:0x84,0x2026:0x85,0x2020:0x86,0x2021:0x87,0x02C6:0x88,0x2030:0x89,0x0160:0x8A,0x2039:0x8B,0x0152:0x8C,0x017D:0x8E,0x2018:0x91,0x2019:0x92,0x201C:0x93,0x201D:0x94,0x2022:0x95,0x2013:0x96,0x2014:0x97,0x02DC:0x98,0x2122:0x99,0x0161:0x9A,0x203A:0x9B,0x0153:0x9C,0x017E:0x9E,0x0178:0x9F};
+const MOJI = /[\u0080-\u00ff\u0152\u0153\u0160\u0161\u0178\u017d\u017e\u0192\u02c6\u02dc\u2013\u2014\u2018-\u201a\u201c-\u201e\u2020-\u2022\u2026\u2030\u2039\u203a\u20ac\u2122]{2,}/g;
+const utf8 = new TextDecoder("utf-8", {fatal: true});
+function unmojibake(str, stats) {
+  return str.replace(MOJI, run => {
+    try {
+      const out = utf8.decode(new Uint8Array([...run].map(ch => { const c = ch.codePointAt(0); return c < 0x100 ? c : CP[c]; })));
+      if (out !== run) stats.fixed++;
+      return out;
+    } catch { if (/^[âðÃÂï]/.test(run)) stats.garbled++; return run; }
+  });
+}
+const fixDeep = (v, st) => typeof v === "string" ? unmojibake(v, st) : Array.isArray(v) ? v.map(x => fixDeep(x, st))
+  : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, fixDeep(x, st)])) : v;
+
+function readYaml(text) {
+  let doc;
+  try { doc = jsyaml.load(text); } catch (e) { return {list: [], note: "That looks like an espanso file, but it has a YAML error: " + e.message.split("\n")[0]}; }
+  const st = {fixed: 0, garbled: 0}, list = [], have = new Map(), renamed = [], empty = [];
+  let same = 0, advanced = 0;
+  allItems().forEach(it => trigsOf(it).forEach(t => have.set(t, it.body)));
+  for (const m0 of Array.isArray(doc?.matches) ? doc.matches : []) {
+    if (!m0 || typeof m0 !== "object") continue;
+    const m = fixDeep(m0, st);
+    if (!isSimple(m)) { list.push({raw: m}); advanced++; continue; }
+    const trigs = (m.triggers || [m.trigger]).map(String).filter(Boolean);
+    if (!m.replace.trim()) { empty.push(trigs[0]); continue; }
+    let t = trigs[0];
+    if (have.has(t)) {
+      if (have.get(t) === m.replace) { same++; continue; }  // exact copy: skip
+      let n = 2; while (have.has(`${t}-${n}`)) n++;          // same trigger, different prompt: keep both
+      renamed.push(`${t} → ${t}-${n}`); t = `${t}-${n}`;
+    }
+    const extra = trigs.slice(1).filter(x => !have.has(x));
+    [t, ...extra].forEach(x => have.set(x, m.replace));
+    const rest = {...m}; for (const k of ["trigger", "triggers", "label", "replace"]) delete rest[k];
+    list.push({trig: [t, ...extra].join(", "), label: m.label || "", body: m.replace, m: rest, group: ""});
+  }
+  const n = list.length - advanced, bits = [];
+  bits.push(n || advanced ? `${n} prompt${n === 1 ? "" : "s"}${advanced ? ` and ${advanced} advanced match${advanced === 1 ? "" : "es"}` : ""} to import.` : "Nothing new to import.");
+  if (st.fixed) bits.push(`Repaired garbled characters (like â€” → —) in ${st.fixed} place${st.fixed === 1 ? "" : "s"}.`);
+  if (st.garbled) bits.push(`${st.garbled} garbled character${st.garbled === 1 ? "" : "s"} couldn't be repaired; fix them by hand after importing.`);
+  if (renamed.length) bits.push(`Already used, so renamed: ${renamed.join(", ")}.`);
+  if (same) bits.push(`${same} skipped (already in your list).`);
+  if (empty.length) bits.push(`Skipped because the prompt is empty in the file: ${empty.join(", ")}.`);
+  return {list, note: bits.join(" ")};
+}
 function readRows(text) {
+  if (/^\s*matches\s*:/m.test(text)) return readYaml(text);
   const rows = parseTable(text); if (!rows.length) return {list: [], note: "Nothing to import yet."};
   const head = rows[0].map(h => h.trim().toLowerCase()), map = {};
   head.forEach((h, i) => { for (const k in COLS) if (map[k] === undefined && COLS[k].test(h)) { map[k] = i; break; } });
@@ -463,7 +513,11 @@ function readRows(text) {
 }
 let pending = [];
 const preview = () => { const r = readRows($("#importText").value); pending = r.list; $("#importInfo").textContent = r.note; $("#importGo").disabled = !pending.length; };
-const openSheet = () => { $("#importText").value = ""; preview(); $("#importDlg").showModal(); };
+const openSheet = () => {
+  $("#importText").value = ""; preview();
+  $("#importTab").innerHTML = files.map(f => `<option value="${esc(f.name)}"${f === cur() ? " selected" : ""}>${esc(tabName(f.name))}</option>`).join("") + `<option value="__new">New tab…</option>`;
+  $("#importDlg").showModal();
+};
 $("#importBtn").onclick = () => {
   $("#qaTab").innerHTML = files.map(f => `<option value="${esc(f.name)}"${f === cur() ? " selected" : ""}>${esc(tabName(f.name))}</option>`).join("");
   $("#qaInfo").classList.remove("err"); $("#quickDlg").showModal(); $("#qaTrig").focus();
@@ -489,15 +543,17 @@ $("#importText").oninput = preview;
 $("#importFile").onchange = async e => { const f = e.target.files[0]; if (f) { $("#importText").value = await f.text(); preview(); } e.target.value = ""; };
 $("#importDlg").onclose = async () => {
   if ($("#importDlg").returnValue !== "go" || !pending.length) return;
-  const keep = active, touched = new Set();
+  let keep = $("#importTab").value;
+  if (keep === "__new") { const f = await newTab(prompt("Name the new tab:", "Imported") || "Imported"); if (!f) return; keep = f.name; }
+  const touched = new Set();
   for (const r of pending) {
     const f = r.group ? (fileOf(slug(r.group) + ".yml") || (r.group.toLowerCase() === "general" ? fileOf("base.yml") : await newTab(r.group))) : fileOf(keep);
     if (!f || f.readonly) continue;
-    f.slots.push({id: ++uid, f, m: {}, trig: r.trig, label: r.label, body: r.body}); touched.add(f);
+    f.slots.push(r.raw !== undefined ? {raw: r.raw} : {id: ++uid, f, m: r.m || {}, trig: r.trig, label: r.label, body: r.body}); touched.add(f);
   }
   touched.forEach(f => changed(f, true));
   active = pending[0].group ? (fileOf(slug(pending[0].group) + ".yml") || fileOf(keep)).name : keep;
-  render(); toast(`Imported ${pending.length} prompts`);
+  render(); toast(`Imported ${pending.length} item${pending.length === 1 ? "" : "s"}`);
 };
 
 // ---------- updates ----------
