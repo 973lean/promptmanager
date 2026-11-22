@@ -8,7 +8,12 @@
     {
       "file": "creative-strategy.yml",
       "tab": "Creative Strategy",
-      "count": 15
+      "count": 10
+    },
+    {
+      "file": "analysis.yml",
+      "tab": "Analysis",
+      "count": 5
     },
     {
       "file": "formatting.yml",

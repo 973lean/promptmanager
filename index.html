@@ -176,7 +176,7 @@ kbd{font:12px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
 
 <dialog id="quickDlg"><form class="in" id="quickForm">
   <h2>Add a prompt</h2>
-  <input id="qaTrig" class="field mono" placeholder=":trigger" spellcheck="false" autocomplete="off" aria-label="Trigger">
+  <input id="qaTrig" class="field mono" placeholder="Trigger: exactly what you'll type, e.g. :email or this is a test" spellcheck="false" autocomplete="off" aria-label="Trigger">
   <textarea id="qaBody" placeholder="Paste the prompt here" aria-label="Prompt"></textarea>
   <p id="qaInfo">Goes into the tab below. <kbd>Ctrl</kbd>+<kbd>Enter</kbd> adds it and clears the form for the next one.</p>
   <div class="row"><span class="grow">Tab <select id="qaTab"></select></span>
@@ -327,7 +327,7 @@ function card(it, showTab) {
   el.className = "card"; el.id = "p" + it.id;
   const opts = files.map(f => `<option value="${esc(f.name)}"${f === it.f ? " selected" : ""}>${esc(tabName(f.name))}</option>`).join("");
   el.innerHTML = `<div class="head">
-      <input class="trig mono" placeholder=":trigger" spellcheck="false" aria-label="Trigger">
+      <input class="trig mono" placeholder="trigger" spellcheck="false" aria-label="Trigger">
       <input class="label" placeholder="Label (shows in espanso search)" aria-label="Label">
       ${showTab ? `<span class="badge">${esc(tabName(it.f.name))}</span>` : ""}
       <div class="acts"><button class="copy" title="Copy the prompt">Copy</button><button class="refine" title="Improve this prompt">Refine</button><select class="mv" title="Move to tab" aria-label="Move to tab"><option disabled>Move to…</option>${opts}</select><button class="del" title="Delete">Delete</button></div>
@@ -402,10 +402,10 @@ function move(it, to) {
 $("#add").onclick = () => {
   const f = cur(); if (f.readonly) return;
   $("#q").value = "";
-  const it = {id: ++uid, f, m: {}, trig: ":", label: "", body: ""};
+  const it = {id: ++uid, f, m: {}, trig: "", label: "", body: ""};
   f.slots.push(it); render();
   const el = $("#p" + it.id); el.scrollIntoView({block: "center", behavior: "smooth"});
-  const t = el.querySelector(".trig"); t.focus(); t.setSelectionRange(1, 1);
+  const t = el.querySelector(".trig"); t.focus();
 };
 let qTimer; $("#q").oninput = () => { clearTimeout(qTimer); qTimer = setTimeout(render, 80); };
 $("#nav").onclick = e => { const a = e.target.closest("a"); if (!a) return; e.preventDefault();
@@ -515,8 +515,7 @@ function readRows(text) {
   }
   const list = data.map(r => {
     let t = (r[map.trig] || "").trim();
-    if (t && /^[A-Za-z0-9]/.test(t)) t = ":" + t;
-    return {trig: t.replace(/\s+/g, ""), body: (r[map.body] || "").replace(/\s+$/, ""), label: (r[map.label] || "").trim(), group: (r[map.group] || "").trim()};
+    return {trig: t, body: (r[map.body] || "").replace(/\s+$/, ""), label: (r[map.label] || "").trim(), group: (r[map.group] || "").trim()};
   }).filter(r => r.trig && r.body);
   const have = new Set(allItems().flatMap(trigsOf));
   const fresh = list.filter(r => !have.has(r.trig)), groups = new Set(fresh.map(r => r.group).filter(Boolean));
@@ -557,9 +556,8 @@ $("#qaBody").onkeydown = e => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter
 $("#quickForm").onsubmit = e => {
   e.preventDefault();
   const info = $("#qaInfo"), say = (t, bad) => { info.textContent = t; info.classList.toggle("err", !!bad); };
-  let t = $("#qaTrig").value.trim().replace(/\s+/g, ""), body = $("#qaBody").value.replace(/\s+$/, "");
-  if (t && /^[A-Za-z0-9]/.test(t)) t = ":" + t;
-  if (!t || t === ":") { say("Add a trigger, like :email", true); return $("#qaTrig").focus(); }
+  const t = $("#qaTrig").value.trim(), body = $("#qaBody").value.replace(/\s+$/, "");  // trigger kept exactly as typed
+  if (!t) { say("Add a trigger: exactly what you'll type to expand it.", true); return $("#qaTrig").focus(); }
   if (!body.trim()) { say("Paste the prompt first.", true); return $("#qaBody").focus(); }
   if (allItems().some(it => trigsOf(it).includes(t))) { say(`${t} already exists. Pick another trigger.`, true); return $("#qaTrig").select(); }
   const f = fileOf($("#qaTab").value) || cur(); if (f.readonly) return say(`${tabName(f.name)} has a YAML error, so it can't be edited.`, true);

@@ -1,0 +1,84 @@
+# Analysis: part of the Prompt Manager library (Import → Load my library)
+matches:
+- trigger: ":segment"
+  replace: |-
+    for each of the these briefs or context give me 13-18 word sentence describing the subsegment or segment that is being targeted
+    [age] [gender] [problem] [intent] [behaviour/s] [other key segment markers]
+- trigger: ":godvisuals"
+  replace: |
+    You are a direct-response creative analyst. Watch this video ad in full and produce an in-depth analytical breakdown: a verbatim transcript, a shot-by-shot map of the visuals, and a structural and stylistic analysis. Another LLM will use this output to write new ad scripts, so it must be accurate, thorough, and strictly structured for easy parsing. # Accuracy rules (these override everything else) - Only describe what is actually seen or heard. Do not guess, embellish, or fill gaps. - When something is inferred rather than directly observable (e.g. whether the narrator is AI), say so and name the cue it is based on. - Mark inaudible speech as [inaudible] and unreadable text as [illegible]. - Transcribe the script verbatim. Do not correct grammar, rewrite, summarise, or match any style. You are only reformatting it. # Output structure Produce these sections in this order, using these exact headers. ## Ad Overview - **Duration:** - **Format / aspect ratio:** (e.g. 9:16 vertical) - **Production structure:** one of A-roll only / A-roll + B-roll / B-roll over voiceover / animation / mixed, followed by one sentence on how it is built (e.g. "Talking-head A-roll throughout, cut with product B-roll every 2–3s"). - **Narrator / talent:** on-camera or faceless; human or likely AI (state the cue); appearance; voice (gender, approximate age, accent, tone, pace); assumed role (e.g. customer, founder, expert). - **Product / offer:** - **Assumed angle:** one concise line on the core promise or hook idea, inferred from the script; name the cue. - **Assumed segment:** one concise line on the target audience, inferred from callouts, talent and setting; name the cue. - **CTA:** exact wording if spoken or shown. ## Beat Map A table with one row per beat: | Beat | Time | Function | Function = a short direct-response description of what the beat does. ## Beat Breakdown Split the ad into its main beats. Name each beat in standard direct-response terms (e.g. Hook, Callout, Problem Agitation, Failed Solutions, Unique Mechanism, Product Reveal, Social Proof, Objection Handling, Offer, Urgency, CTA). These are examples only. Name each beat by what it actually does, and do not force the ad into this list or this order. Number repeated beat types (e.g. Problem Agitation I, Problem Agitation II). For each beat, use exactly this format: ### Beat Name [Xs – Ys] **Function:** one sentence on what this beat does persuasively. (Visual [Xs–Ys] | A-roll or B-roll: what is on screen: subject, action, setting, framing, and any notable camera or edit move) (On-screen text: "exact text") (Audio: music or SFX and what it does) script line script line Rules for the beat breakdown: - Start a new Visual line at every cut or significant visual change, and at least every 2–3 seconds even if the shot holds. - Include an On-screen text line only when text appears on screen. Transcribe it exactly. - Include an Audio line only when music or SFX actually does something (e.g. a stinger on the hook, a music drop at the reveal). One Audio line per beat at most. - Under each Visual line, put the script lines spoken during that shot. If nothing is spoken, leave the Visual line with no script under it. - One script line = one sentence or natural spoken phrase. Put a blank line between script lines so each line is its own paragraph. - Timestamps go only in beat headers and Visual lines, never on script lines. - Include every spoken word. Nothing is skipped or merged. ## Visual Style Spec Fill only what applies, and write "n/a" for everything else. - **Shot types & framing:** - **Editing pace:** (approximate average shot length, and how it changes across the ad) - **Captions:** (style, colour, placement, word-by-word or full-line) - **Text overlays & graphics:** - **Animation / motion style:** (e.g. kinetic type, 2D explainer, 3D render, zoom punch-ins) - **Colour & lighting:** - **Setting / environment:** - **Music & sound design:** one line overall. ## Visual Summary Write one paragraph describing the ad's overall visual arc, so an LLM can understand what was shown from start to finish without watching it. Then list: - **Patterns:** recurring structural or visual devices (e.g. "every claim is followed by a B-roll proof shot"). Include each one only if it is objectively present, and give the evidence for it. - **Vibe:** the overall tone and feel, with the evidence for it. ## Visual Style Summary Write 1–2 paragraphs describing only how the ad looks and moves, with no mention of the product, niche, script or persuasion, so another LLM can reproduce the same look for a completely different product. Open with the rendering style mix and each style's approximate share of runtime, plus the closest named reference style (e.g. "flat vector explainer", "Pixar-style 3D", "handheld iPhone UGC"). Then cover palette, lighting, framing, motion and editing feel, and caption and text treatment. Use observable, technical terms rather than evaluative ones (e.g. "engaging", "premium"), and mark anything you cannot determine as "Unclear:" followed by your best estimate. --- ## Spoken Transcript After the Visual Style Summary, add a divider line (---), then this section. List every spoken line from the ad in order, verbatim, one script line per line, with a blank line between lines. Split the lines the same way as in the Beat Breakdown. Include spoken words only: no beat names, timestamps, Visual, On-screen text or Audio lines, speaker labels, or commentary.
+- trigger: ":hookverbatim"
+  replace: can you search reddit threads or highest likes verbatims to see what type of hooks can resonate proven
+- trigger: ":awareness"
+  replace: |
+    ## ROLE + TASK CONTEXT
+    You are a direct response media buyer and market research analyst assessing Eugene Schwartz's awareness stages for either a product category/mechanism or a market; be precise and evidence-based — do not guess or conflate awareness levels.
+    ## INPUT/DYNAMIC CONTENT
+    You will receive either a product category/mechanism name, or a market name. Research it using web search across: Google Trends signals, Meta Ad Library creative patterns, Reddit/TikTok/YouTube comment sentiment, news coverage, and e-commerce review volume.
+    ## STEP-BY-STEP INSTRUCTIONS
+    (1) Search the input across Google Trends, Reddit, TikTok, and news sources before concluding anything.
+    (2) Identify whether the input is a **market** or a **product category/mechanism** — this determines the analysis flow for all subsequent steps.
+    (3) Identify whether mass market consumers know the problem exists, know solutions exist, or know this product category/mechanism specifically solves it.
+    (4) Use Ad Library creative style as a signal — educational ads = low awareness; lifestyle/offer ads = high awareness.
+    (5) Assign exactly ONE awareness level from the five below using the strictest accurate definition.
+    (6) Write 3 justified reasons with sourced evidence.
+    (7) Provide the market name and a one sentence descriptor.
+    (8) Find the TAM of the US market, including annual turnover and market size (number of people). Reference each source.
+    (9) Explain the loyalty of the market, if people generally buy from any brand or are closely loyal to major incumbents. Justify and explain sources. If the brand loyalty is at least medium / high, you must briefly denote the major brands and the landscape.
+    (10) Generate an awareness table:
+    - If the input is a **mechanism/product category**: the table reflects awareness of that specific mechanism/product category.
+    - If the input is a **market**: the table reflects general awareness segments across the broader market.
+    (11) Output a Mechanisms section:
+    - If the input is a **market**: conduct a deep research dive to find all major mechanisms active in that market — both Proven and Emerging. Do not default to a fixed number; find every mechanism with meaningful market presence. Rank each list numerically by estimated market capture/reach, from highest to lowest. Include key mechanisms beyond only the absolute top hitters, but exclude fringe or negligible mechanisms with minimal market footprint. Each list must not exceed 10 items.
+    - If the input is a **mechanism/product category**: apply the same research and ranking approach to the relevant market, AND identify which category (Proven or Emerging) the input mechanism falls into, with a one sentence rationale.
+    ## Awareness definitions:
+    Unaware: Doesn't know they have the problem
+    Problem-Aware: Knows the problem, unaware solutions exist
+    Solution-Aware: Knows solutions exist, skeptical they work
+    Product-Category-Aware: Knows this category solves it, comparing options
+    Most-Aware: Brand-loyal, needs offer/urgency only
+    ## GUARDRAILS + REMINDER
+    Do not conflate Solution-Aware with Product-Category-Aware — they are distinct stages
+    Do not assign Most-Aware unless brand dominance is confirmed
+    Do not rely on assumption — cite actual sources found
+    The mass market majority stage is what matters, not edge-case early adopters
+    Insights must be kept to 1 sentence, up to 2 where detail is absolutely mandatory.
+
+    ## OUTPUT FORMAT
+    MASS MARKET AWARENESS LEVEL: [single stage]
+    JUSTIFICATION:
+    * [Header Term] — [1-2 sentences + source]
+    * [Header Term] — [1-2 sentences + source]
+    ...
+    Market Details: {market name} - {one sentence descriptor}
+
+    Brand Loyalty: {low, medium, high} - {one sentence descriptor}
+
+    TAM: {figure + cited source}
+
+    Awareness Analysis:
+    Awareness | Est. Distribution | Details
+    Unaware | X% | [description]
+    Problem-Aware | X% | [description]
+    Solution-Aware | X% | [description]
+    Product-Category-Aware | X% | [description]
+    Most-Aware | X% | [description]
+
+    Mechanisms:
+
+    Proven Mechanisms:
+    1. [mechanism]
+    2. [mechanism]
+    ...
+
+    Emerging Mechanisms:
+    1. [mechanism]
+    2. [mechanism]
+    ...
+    **[If mechanism/product input only]**
+    Classification: [Proven / Emerging] — [one sentence rationale]
+    __________
+    PRODUCT/MARKET:"
+- trigger: ":sum"
+  replace: |
+    ## ROLE + TASK CONTEXT You are a direct response creative strategist writing one-sentence ad concept summaries for UGC creative briefs; be concrete, plain and confident. ## INPUT/DYNAMIC CONTENT You receive a full ad script table (shot type, script, visuals, sometimes post-prod notes). It may come with brief notes, which can include a rough draft summary or a direction for it. Treat a draft as the base to refine, not the final answer. Script table: [INSERT SCRIPT TABLE] Notes (optional): [INSERT NOTES] ## STEP-BY-STEP INSTRUCTIONS (1) Read the full table and notes before writing anything. (2) Identify the narrator: gender, rough age range, and relation to the problem (sufferer, mum, doctor). (3) Identify the setting from stated locations or visual cues (car, desk, kitchen bench, school pickup). (4) Identify the format (rant, Q&A, testimonial, educational, before-and-after). (5) Identify the core story: the problem, what failed, and what finally changed, including the product name if spoken. (6) Identify the main visual proof (before photos, clear skin on camera). (7) If age, nationality or setting is not stated, infer it from visual cues, slang and spelling. If no cue exists, leave that detail out. (8) If the notes contain a draft summary, keep its intent and accurate wording, then fix errors and tighten it. (9) Write one sentence in this order: who, where, format, what they explain, proof. ## EXAMPLES Input: | Hook 1 | Mum: This was my daughter's acne 2 years ago. I'm about to pick her up, just wait till you see her now. | Mum pulls up to school pickup. Daughter gets in and says "Hi Mum." | | Body | Mum: How long was it bad? Daughter: Like two years. | Daughter looks out the window. | | Body | Mum: So what changed? Daughter: These gummies you got me. | Daughter holds up the Nuo jar. | | CTA | Mum: If you don't get your confident girl back in sixty days, you get a full refund. | Jar in mum's hand. | Output: Cute testimonial where a mum picks up her daughter in the car, then quizzes her about how she healed her acne, and they go back and forth explaining how NUO was the reason her skin cleared. ## GUARDRAILS + REMINDER - Do not write more than one sentence. - Do not add claims, results or numbers that are not in the script. - Do not quote script lines or list hooks. - Do not use hype adjectives (amazing, game-changing, life-changing). - Most critical: the sentence must let a creator picture the whole ad after one read. Begin. ## OUTPUT FORMAT Output only the sentence. Start with the summary's first word. No label, quotation marks, preamble or follow-up.
