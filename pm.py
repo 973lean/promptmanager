@@ -10,13 +10,16 @@ Edits save straight into those files; espanso reloads them on its own.
 Standard library only. Optional: `pip install anthropic` + ANTHROPIC_API_KEY
 enables "Refine with Claude".
 """
-import json, os, platform, re, secrets, ssl, subprocess, sys, threading, urllib.request, webbrowser
+import json, os, platform, re, secrets, ssl, subprocess, sys, threading, time, urllib.parse, urllib.request, webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 REPO_RAW = os.environ.get("PM_UPDATE_URL", "https://raw.githubusercontent.com/973lean/promptmanager/main/")
-HERE = Path(__file__).resolve().parent
+RELEASE = os.environ.get("PM_RELEASE_URL", "https://github.com/973lean/promptmanager/releases/latest/download/")
+FROZEN = getattr(sys, "frozen", False)  # running as PromptManager.exe
+HERE = Path(sys.executable).resolve().parent if FROZEN else Path(__file__).resolve().parent  # where settings live
+RES = Path(getattr(sys, "_MEIPASS", HERE))  # where index.html and vendor/ live
 SETTINGS = HERE / "settings.json"
 TOKEN = secrets.token_urlsafe(24)
 MODEL = os.environ.get("PM_MODEL", "claude-opus-5-5")
@@ -31,11 +34,13 @@ META = (
 
 
 # ---------------- settings ----------------
+DEFAULTS = {"auto_update": True, "app_window": True}
+
 def settings() -> dict:
     try:
-        return {"auto_update": True, **json.loads(SETTINGS.read_text())}
+        return {**DEFAULTS, **json.loads(SETTINGS.read_text())}
     except Exception:
-        return {"auto_update": True}
+        return dict(DEFAULTS)
 
 
 def save_settings(s: dict):
@@ -71,8 +76,8 @@ def vtuple(v: str):
     return tuple(int(x) for x in re.findall(r"\d+", v)[:3])
 
 
-def fetch(path: str) -> bytes:
-    req = urllib.request.Request(REPO_RAW + path, headers={"User-Agent": "promptmanager", "Cache-Control": "no-cache"})
+def fetch(path: str, base: str = REPO_RAW) -> bytes:
+    req = urllib.request.Request(base + urllib.parse.quote(path), headers={"User-Agent": "promptmanager", "Cache-Control": "no-cache"})
     try:
         with urllib.request.urlopen(req, timeout=15) as r:
             return r.read()
@@ -83,12 +88,30 @@ def fetch(path: str) -> bytes:
 
 
 def check_update() -> dict:
-    m = json.loads(fetch("manifest.json"))
+    # The .exe follows GitHub Releases (published once the build finishes); the script follows main.
+    m = json.loads(fetch("manifest.json", RELEASE if FROZEN else REPO_RAW))
     return {"current": VERSION, "latest": m["version"], "available": vtuple(m["version"]) > vtuple(VERSION), "manifest": m}
+
+
+def apply_exe_update() -> None:
+    """Windows lets you rename a running .exe, so: rename ours aside, drop the new one in its place."""
+    exe = Path(sys.executable)
+    data = fetch("PromptManager.exe", RELEASE)
+    if len(data) < 1_000_000 or data[:2] != b"MZ":
+        raise RuntimeError("the downloaded app looks broken; keeping the current one")
+    new, old = exe.with_name(exe.stem + ".new.exe"), exe.with_name(exe.stem + ".old.exe")
+    new.write_bytes(data)
+    if old.exists():
+        old.unlink()
+    os.replace(exe, old)
+    os.replace(new, exe)
 
 
 def apply_update(manifest: dict) -> str:
     """Download every file first, verify, then swap them in. Your prompts are never touched."""
+    if FROZEN:
+        apply_exe_update()
+        return manifest["version"]
     files = {}
     for rel in manifest["files"]:
         if ".." in rel or rel.startswith("/"):
@@ -130,8 +153,60 @@ def bg_check(auto_apply: bool):
 
 
 def restart():
-    args = [a for a in sys.argv[1:] if a != "--no-open"] + ["--no-open"]
-    os.execv(sys.executable, [sys.executable, str(HERE / "pm.py"), *args])
+    """Start a fresh copy (it waits for the port to free up), then exit."""
+    args = [a for a in sys.argv[1:] if a not in ("--no-open", "--restarted")] + ["--no-open", "--restarted"]
+    flags = 0x08000000 if os.name == "nt" else 0  # CREATE_NO_WINDOW: no console pops up
+    cmd = [sys.executable, *args] if FROZEN else [sys.executable, str(HERE / "pm.py"), *args]
+    subprocess.Popen(cmd, creationflags=flags, close_fds=True)
+    os._exit(0)
+
+
+# ---------------- start with Windows ----------------
+def startup_file() -> Path:
+    folder = Path(os.environ.get("APPDATA", "")) / "Microsoft/Windows/Start Menu/Programs/Startup"
+    return folder / ("Prompt Manager.vbs" if FROZEN else "Prompt Manager.pyw")
+
+
+def set_startup(on: bool):
+    f = startup_file()
+    if not on:
+        return f.unlink() if f.exists() else None
+    if FROZEN:  # run the .exe hidden at login
+        f.write_text(f'CreateObject("WScript.Shell").Run """{sys.executable}"" --no-open", 0\n', encoding="utf-8")
+    else:
+        f.write_text(
+            "import runpy, sys\n"
+            f"sys.argv = [{str(HERE / 'pm.py')!r}, '--no-open']\n"
+            f"runpy.run_path({str(HERE / 'pm.py')!r}, run_name='__main__')\n",
+            encoding="utf-8",
+        )
+
+
+# ---------------- open the window ----------------
+def open_ui(url: str):
+    """Open as a clean app window (Chrome or Edge, no address bar) when possible, else a normal tab."""
+    if settings()["app_window"]:
+        try:
+            if os.name == "nt":
+                env = os.environ.get
+                for p in (
+                    Path(env("LOCALAPPDATA", "")) / "Google/Chrome/Application/chrome.exe",
+                    Path(env("PROGRAMFILES", "")) / "Google/Chrome/Application/chrome.exe",
+                    Path(env("PROGRAMFILES(X86)", "")) / "Google/Chrome/Application/chrome.exe",
+                    Path(env("PROGRAMFILES(X86)", "")) / "Microsoft/Edge/Application/msedge.exe",
+                    Path(env("PROGRAMFILES", "")) / "Microsoft/Edge/Application/msedge.exe",
+                ):
+                    if p.is_file():
+                        subprocess.Popen([str(p), f"--app={url}"])
+                        return
+            elif sys.platform == "darwin":
+                for app in ("Google Chrome", "Microsoft Edge"):
+                    if Path(f"/Applications/{app}.app").exists():
+                        subprocess.Popen(["open", "-na", app, "--args", f"--app={url}"])
+                        return
+        except Exception:
+            pass
+    webbrowser.open(url)
 
 
 # ---------------- claude ----------------
@@ -199,16 +274,26 @@ class App(BaseHTTPRequestHandler):
         return {
             "dir": str(self.dir), "files": [self.file_state(f) for f in files], "claude": has_claude(),
             "version": VERSION, "update": UPDATE, "auto_update": settings()["auto_update"],
+            "windows": os.name == "nt", "startup": os.name == "nt" and startup_file().exists(),
+            "app_window": settings()["app_window"], "exe": FROZEN,
         }
 
     def do_GET(self):
         if not self.host_ok():
             return self.send(403, {"error": "bad host"})
         if self.path == "/":
-            html = (HERE / "index.html").read_text(encoding="utf-8").replace("__TOKEN__", TOKEN)
+            html = (RES / "index.html").read_text(encoding="utf-8").replace("__TOKEN__", TOKEN)
             return self.send(200, html, "text/html")
         if self.path == "/js-yaml.min.js":
-            return self.send(200, (HERE / "vendor/js-yaml.min.js").read_bytes(), "text/javascript")
+            return self.send(200, (RES / "vendor/js-yaml.min.js").read_bytes(), "text/javascript")
+        if self.path == "/icon.png":
+            return self.send(200, (RES / "icon.png").read_bytes(), "image/png")
+        if self.path == "/manifest.webmanifest":  # lets Chrome/Edge "Install" it as an app
+            return self.send(200, json.dumps({
+                "name": "Prompt Manager", "short_name": "Prompts", "start_url": "/", "display": "standalone",
+                "background_color": "#f4f5f7", "theme_color": "#2f6bff",
+                "icons": [{"src": "/icon.png", "sizes": "512x512", "type": "image/png"}],
+            }), "application/manifest+json")
         if self.path == "/api/state" and self.authed():
             return self.send(200, self.state())
         self.send(404, {"error": "not found"})
@@ -265,14 +350,30 @@ class App(BaseHTTPRequestHandler):
             return
         if p == "/api/settings":
             s = settings()
-            s["auto_update"] = bool(b.get("auto_update"))
+            for k in ("auto_update", "app_window"):
+                if k in b:
+                    s[k] = bool(b[k])
             save_settings(s)
+            if "startup" in b and os.name == "nt":
+                set_startup(bool(b["startup"]))
             return self.send(200, s)
+        if p == "/api/quit":
+            self.send(200, {"ok": True})
+            threading.Timer(0.3, lambda: os._exit(0)).start()
+            return
         self.send(404, {"error": "not found"})
 
 
+def already_running(url: str) -> bool:
+    try:
+        with urllib.request.urlopen(url, timeout=2) as r:
+            return b"Prompt Manager" in r.read(4096)
+    except Exception:
+        return False
+
+
 def main(argv):
-    port, open_browser, target = 7878, True, None
+    port, open_browser, target, restarted = 7878, True, None, False
     it = iter(argv)
     for a in it:
         if a == "--port":
@@ -281,20 +382,41 @@ def main(argv):
             open_browser = False
         elif a in ("-h", "--help"):
             sys.exit(print(__doc__))
+        elif a == "--restarted":
+            restarted = True
         elif a == "--version":
             sys.exit(print(VERSION))
         else:
             target = Path(a).expanduser().resolve()
     App.dir = target or espanso_match_dir()
     App.port = port
-    ThreadingHTTPServer.allow_reuse_address = True
-    srv = ThreadingHTTPServer(("127.0.0.1", port), App)
+    # On Windows SO_REUSEADDR would let two copies share the port, so only use it elsewhere.
+    ThreadingHTTPServer.allow_reuse_address = os.name != "nt"
     url = f"http://127.0.0.1:{port}/"
+    for attempt in range(40):
+        try:
+            srv = ThreadingHTTPServer(("127.0.0.1", port), App)
+            break
+        except OSError:
+            if restarted:  # the old copy is still shutting down
+                time.sleep(0.25)
+                continue
+            if already_running(url):  # double-clicked again: just show the open one
+                open_ui(url)
+                return
+            sys.exit(f"Port {port} is in use. Try: pm.py --port 7900")
+    else:
+        sys.exit(f"Port {port} is still in use.")
     print(f"Prompt Manager {VERSION} → {url}\nfolder {App.dir}\nCtrl+C to quit")
     if settings()["auto_update"] and not os.environ.get("PM_NO_UPDATE"):
         threading.Thread(target=bg_check, args=(True,), daemon=True).start()  # never delays startup
+    if FROZEN:  # tidy up after an .exe update
+        try:
+            (HERE / (Path(sys.executable).stem + ".old.exe")).unlink()
+        except OSError:
+            pass
     if open_browser:
-        webbrowser.open(url)
+        open_ui(url)
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

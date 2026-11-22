@@ -3,7 +3,7 @@
 A tiny, instant editor for your espanso prompts. Type, and the prompt is live in espanso about a second later. There's nothing to copy and paste into `base.yml`.
 
 - **Tabs:** group prompts (Coding, Writing, Sales…). Each tab is its own `.yml` file in espanso's `match` folder, which is how espanso organises files anyway. **General** is `base.yml`.
-- **Instant:** one Python file plus one HTML page, standard library only, no build step and no framework. It starts in well under a second.
+- **Instant:** one Python file plus one HTML page, standard library only, no framework. Also available as a single `.exe`.
 - **Import from Google Sheets:** copy your rows (with the header row) and paste them. CSV files work too. Columns: `trigger`, `prompt`, `label`, `group` (each group becomes a tab).
 - **Auto-update:** it checks this repo when it starts and installs new versions in the background. You can also check by hand from the version button (top right). Updates never touch your prompts.
 - **Safe:** saves are atomic and each file gets a `.bak` backup on the first save. Matches with variables, regex or forms are kept untouched. A YAML error pauses editing instead of overwriting.
@@ -12,23 +12,17 @@ A tiny, instant editor for your espanso prompts. Type, and the prompt is live in
 
 ## Install
 
-Download **Code → Download ZIP** and unzip it anywhere (Documents, Dropbox, a USB stick). Or clone it:
+**Windows, no Python needed:** download **PromptManager.exe** from [Releases](https://github.com/973lean/promptmanager/releases/latest), put it anywhere (e.g. Documents), and double-click it. Windows may warn about an unknown app the first time: click **More info → Run anyway**. It updates itself from Releases.
 
-```bash
-git clone https://github.com/973lean/promptmanager
-```
-
-Needs Python 3.8+ (built in on macOS and Linux; on Windows, get it from python.org).
-
-## Start
+**With Python (any OS):** download **Code → Download ZIP** and *extract it first* (don't run it from inside the zip, or updates get lost). Then:
 
 | OS | Do |
 |---|---|
+| Windows | double-click `PromptManager.pyw` (no console window) |
 | macOS | double-click `start.command` (first time: right-click → Open) |
-| Windows | double-click `start.bat` |
 | Any | `python3 pm.py` |
 
-Your browser opens `http://127.0.0.1:7878`. Keep the window that started it open while you edit.
+It opens in its own Chrome/Edge app window (falls back to your normal browser), with no console window. Double-clicking again just brings it back. Use **Settings** (top right) to quit, start it with Windows, switch between an app window and a normal tab, or turn auto-update off. In Chrome or Edge you can also use **Install app** from the address bar.
 
 ## Writing prompts
 
@@ -57,4 +51,4 @@ Without a key, **Refine** copies a ready-made "improve this prompt" message for 
 
 ## Releasing an update (maintainer)
 
-Bump `VERSION` in `pm.py` and `"version"` in `manifest.json` (keep them the same), list any new files in `manifest.json`, and push to `main`. Every install picks it up on its next start.
+Bump `VERSION` in `pm.py` and `"version"` in `manifest.json` (keep them the same), list any new files in `manifest.json`, and push to `main`. Script installs pick it up on their next start. The **Build Windows app** workflow builds `PromptManager.exe` and publishes a release, which `.exe` installs pick up.

@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Prompt Manager</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#2f6bff">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232f6bff'/><text x='16' y='22' font-size='16' font-family='monospace' text-anchor='middle' fill='white'>:p</text></svg>">
 <style>
 :root{
@@ -116,6 +118,7 @@ dialog select{border:1px solid var(--line);border-radius:6px;background:var(--pa
 #qaBody{min-height:200px;font:14px/1.55 ui-sans-serif,system-ui,sans-serif}
 .err{color:var(--danger)!important}
 dialog .row{display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
+dialog .row .grow-left{margin-right:auto}
 dialog .row .grow{margin-right:auto;color:var(--muted);font-size:13.5px}
 .switch{display:flex;gap:10px;align-items:center;cursor:pointer;font-size:14px}
 .switch input{width:16px;height:16px;accent-color:var(--accent)}
@@ -151,7 +154,7 @@ kbd{font:12px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
   <div class="status" id="status"><span class="dot"></span><span id="statusText">Loading…</span></div>
   <button class="btn" id="importBtn">Quick add</button>
   <button class="btn primary" id="add">+ New<span class="long"> prompt</span></button>
-  <button class="ver" id="ver" title="Updates"></button>
+  <button class="ver" id="ver" title="Settings and updates"></button>
 </header>
 <div class="tabs" id="tabs"></div>
 
@@ -189,11 +192,13 @@ kbd{font:12px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
 </form></dialog>
 
 <dialog id="verDlg"><form method="dialog" class="in">
-  <h2>Updates</h2>
+  <h2>Settings</h2>
   <p id="verInfo"></p>
   <label class="switch"><input type="checkbox" id="autoUp"> Update automatically when the app starts</label>
+  <label class="switch"><input type="checkbox" id="appWin"> Open in its own app window (Chrome or Edge, no tabs or address bar)</label>
+  <label class="switch hidden" id="startupRow"><input type="checkbox" id="startup"> Start with Windows (runs quietly in the background)</label>
   <p>Updates only replace the app's own files. Your prompts aren't touched.</p>
-  <div class="row"><button class="btn" value="close">Close</button><button class="btn primary" id="verAct" type="button">Check for updates</button></div>
+  <div class="row"><button class="btn grow-left" id="quit" type="button">Quit Prompt Manager</button><button class="btn" value="close">Close</button><button class="btn primary" id="verAct" type="button">Check for updates</button></div>
 </form></dialog>
 
 <div class="toast" id="toast"><span id="toastText"></span><button id="toastBtn" class="hidden"></button></div>
@@ -203,7 +208,7 @@ kbd{font:12px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
 const TOKEN = "__TOKEN__";
 const META = "You are an expert prompt engineer. Rewrite my prompt below so it gets the best possible result. Keep my intent, voice and any placeholders ($|$ marks the cursor, keep it). Be clear, specific and concise; add structure only where it helps. Return only the final prompt.\n\nPrompt:\n";
 const $ = s => document.querySelector(s);
-let files = [], active = "base.yml", dir = "", hasClaude = false, version = "", upd = {}, autoUpdate = true, uid = 0, saidUpdated = false;
+let isWin = false, startup = false, appWin = true, isExe = false, files = [], active = "base.yml", dir = "", hasClaude = false, version = "", upd = {}, autoUpdate = true, uid = 0, saidUpdated = false;
 
 // ---------- helpers ----------
 async function api(path, body) {
@@ -234,7 +239,7 @@ function parseFile(fs) {
   return f;
 }
 function apply(s) {
-  dir = s.dir; hasClaude = s.claude; version = s.version; autoUpdate = s.auto_update;
+  dir = s.dir; hasClaude = s.claude; isWin = s.windows; startup = s.startup; appWin = s.app_window; isExe = s.exe; version = s.version; autoUpdate = s.auto_update;
   files = s.files.map(parseFile);
   if (!fileOf(active)) active = "base.yml";
   updateState(s.update); render();
@@ -501,6 +506,8 @@ function updateState(u) {
   $("#ver").textContent = "v" + version;
   $("#ver").classList.toggle("new", upd.status === "available" || upd.status === "updated");
   if (upd.status === "available") $("#ver").textContent = `v${upd.latest} available`;
+  $("#ver").title = upd.status === "error" ? "Update check failed: " + upd.error : "Settings and updates";
+  if (upd.status === "error") $("#ver").textContent = `v${version} ⚠`;
   if (upd.status === "updated") { $("#ver").textContent = "Restart to update"; if (!saidUpdated) { saidUpdated = true; toast(`Updated to v${upd.latest}.`, "Restart now", restartApp); } }
   if ($("#verDlg").open) verDlg();
 }
@@ -510,10 +517,18 @@ function verDlg() {
     updated: `v${upd.latest} is downloaded. Restart to start using it.`, error: `Couldn't check for updates: ${upd.error}`,
   }[s] || `You have v${version}.`;
   $("#verInfo").textContent = info; $("#autoUp").checked = autoUpdate;
+  $("#startupRow").classList.toggle("hidden", !isWin); $("#startup").checked = startup; $("#appWin").checked = appWin;
   const b = $("#verAct"); b.disabled = s === "checking";
   b.textContent = s === "available" ? "Update now" : s === "updated" ? "Restart now" : "Check for updates";
 }
 $("#ver").onclick = () => { verDlg(); $("#verDlg").showModal(); };
+$("#appWin").onchange = async e => { appWin = e.target.checked; await api("/api/settings", {app_window: appWin}); toast(appWin ? "Next time it opens in its own window." : "Next time it opens in a normal browser tab."); };
+$("#startup").onchange = async e => { startup = e.target.checked; await api("/api/settings", {startup}); toast(startup ? "Prompt Manager will start with Windows." : "It won't start with Windows anymore."); };
+$("#quit").onclick = async () => {
+  if (files.some(f => f.dirty || f.saving)) return toast("Still saving, try again in a second.");
+  await api("/api/quit", {}); $("#verDlg").close();
+  document.body.innerHTML = '<div class="empty" style="padding-top:20vh"><b>Prompt Manager is closed.</b><br>Open it again from PromptManager.exe or PromptManager.pyw. You can close this tab.</div>';
+};
 $("#autoUp").onchange = async e => { autoUpdate = e.target.checked; await api("/api/settings", {auto_update: autoUpdate}); };
 $("#verAct").onclick = async () => {
   if (upd.status === "updated") return restartApp();

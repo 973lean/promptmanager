@@ -1,0 +1,57 @@
+# Builds PromptManager.exe and publishes it as a GitHub Release whenever the
+# version in manifest.json changes. The .exe's updater reads that release.
+name: Build Windows app
+
+on:
+  push:
+    branches: [main]
+    paths: [manifest.json]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Read version
+        id: v
+        shell: bash
+        run: echo "version=$(python -c "import json;print(json.load(open('manifest.json'))['version'])")" >> "$GITHUB_OUTPUT"
+
+      - name: Skip if this version is already released
+        id: check
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "v${{ steps.v.outputs.version }}" >/dev/null 2>&1; then echo "skip=1" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Build
+        if: steps.check.outputs.skip != '1'
+        shell: bash
+        run: |
+          pip install pyinstaller==6.11.1 pillow==11.0.0
+          pyinstaller --onefile --noconsole --name PromptManager --icon icon.png \
+            --add-data "index.html;." --add-data "vendor;vendor" --add-data "icon.png;." \
+            --exclude-module tkinter --exclude-module unittest --exclude-module pydoc \
+            pm.py
+          ls -la dist
+
+      - name: Publish release
+        if: steps.check.outputs.skip != '1'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="${{ steps.v.outputs.version }}"
+          gh release create "v$V" dist/PromptManager.exe manifest.json \
+            --title "Prompt Manager v$V" \
+            --notes "Download **PromptManager.exe** and double-click it. No Python needed. It updates itself from here."
