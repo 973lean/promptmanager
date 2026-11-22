@@ -110,7 +110,11 @@ dialog .in{padding:20px 22px;display:grid;gap:12px}
 dialog h2{margin:0;font-size:17px}
 dialog p{margin:0;color:var(--muted);font-size:14px}
 dialog textarea{width:100%;min-height:160px;border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--bg);font:13px/1.5 ui-monospace,monospace;resize:vertical;outline:none}
-dialog textarea:focus{border-color:var(--accent)}
+dialog textarea:focus,dialog input.field:focus{border-color:var(--accent)}
+dialog input.field{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--bg);outline:none}
+dialog select{border:1px solid var(--line);border-radius:6px;background:var(--paper);padding:3px 6px}
+#qaBody{min-height:200px;font:14px/1.55 ui-sans-serif,system-ui,sans-serif}
+.err{color:var(--danger)!important}
 dialog .row{display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
 dialog .row .grow{margin-right:auto;color:var(--muted);font-size:13.5px}
 .switch{display:flex;gap:10px;align-items:center;cursor:pointer;font-size:14px}
@@ -145,7 +149,7 @@ kbd{font:12px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
     <input id="q" placeholder="Search all tabs" autocomplete="off">
   </label>
   <div class="status" id="status"><span class="dot"></span><span id="statusText">Loading…</span></div>
-  <button class="btn" id="importBtn">Import</button>
+  <button class="btn" id="importBtn">Quick add</button>
   <button class="btn primary" id="add">+ New<span class="long"> prompt</span></button>
   <button class="ver" id="ver" title="Updates"></button>
 </header>
@@ -162,6 +166,17 @@ kbd{font:12px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
     </div>
   </main>
 </div>
+
+<dialog id="quickDlg"><form class="in" id="quickForm">
+  <h2>Add a prompt</h2>
+  <input id="qaTrig" class="field mono" placeholder=":trigger" spellcheck="false" autocomplete="off" aria-label="Trigger">
+  <textarea id="qaBody" placeholder="Paste the prompt here" aria-label="Prompt"></textarea>
+  <p id="qaInfo">Goes into the tab below. <kbd>Ctrl</kbd>+<kbd>Enter</kbd> adds it and clears the form for the next one.</p>
+  <div class="row"><span class="grow">Tab <select id="qaTab"></select></span>
+    <button class="btn" type="button" id="qaSheet">Paste many from a sheet</button>
+    <button class="btn" type="button" id="qaDone">Done</button>
+    <button class="btn primary" type="submit">Add</button></div>
+</form></dialog>
 
 <dialog id="importDlg"><form method="dialog" class="in">
   <h2>Import prompts</h2>
@@ -443,7 +458,28 @@ function readRows(text) {
 }
 let pending = [];
 const preview = () => { const r = readRows($("#importText").value); pending = r.list; $("#importInfo").textContent = r.note; $("#importGo").disabled = !pending.length; };
-$("#importBtn").onclick = () => { $("#importText").value = ""; preview(); $("#importDlg").showModal(); };
+const openSheet = () => { $("#importText").value = ""; preview(); $("#importDlg").showModal(); };
+$("#importBtn").onclick = () => {
+  $("#qaTab").innerHTML = files.map(f => `<option value="${esc(f.name)}"${f === cur() ? " selected" : ""}>${esc(tabName(f.name))}</option>`).join("");
+  $("#qaInfo").classList.remove("err"); $("#quickDlg").showModal(); $("#qaTrig").focus();
+};
+$("#qaDone").onclick = () => $("#quickDlg").close();
+$("#qaSheet").onclick = () => { $("#quickDlg").close(); openSheet(); };
+$("#qaBody").onkeydown = e => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); $("#quickForm").requestSubmit(); } };
+$("#quickForm").onsubmit = e => {
+  e.preventDefault();
+  const info = $("#qaInfo"), say = (t, bad) => { info.textContent = t; info.classList.toggle("err", !!bad); };
+  let t = $("#qaTrig").value.trim().replace(/\s+/g, ""), body = $("#qaBody").value.replace(/\s+$/, "");
+  if (t && /^[A-Za-z0-9]/.test(t)) t = ":" + t;
+  if (!t || t === ":") { say("Add a trigger, like :email", true); return $("#qaTrig").focus(); }
+  if (!body.trim()) { say("Paste the prompt first.", true); return $("#qaBody").focus(); }
+  if (allItems().some(it => trigsOf(it).includes(t))) { say(`${t} already exists. Pick another trigger.`, true); return $("#qaTrig").select(); }
+  const f = fileOf($("#qaTab").value) || cur(); if (f.readonly) return say(`${tabName(f.name)} has a YAML error, so it can't be edited.`, true);
+  f.slots.push({id: ++uid, f, m: {}, trig: t, label: "", body}); changed(f, true);
+  active = f.name; $("#q").value = ""; render();
+  $("#qaTrig").value = ""; $("#qaBody").value = ""; $("#qaTrig").focus();
+  say(`Added ${t} to ${tabName(f.name)}. Add another, or press Done.`);
+};
 $("#importText").oninput = preview;
 $("#importFile").onchange = async e => { const f = e.target.files[0]; if (f) { $("#importText").value = await f.text(); preview(); } e.target.value = ""; };
 $("#importDlg").onclose = async () => {

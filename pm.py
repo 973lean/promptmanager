@@ -14,7 +14,7 @@ import json, os, platform, re, secrets, ssl, subprocess, sys, threading, urllib.
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 REPO_RAW = os.environ.get("PM_UPDATE_URL", "https://raw.githubusercontent.com/973lean/promptmanager/main/")
 HERE = Path(__file__).resolve().parent
 SETTINGS = HERE / "settings.json"
