@@ -14,7 +14,7 @@ import json, os, platform, re, secrets, ssl, subprocess, sys, threading, time, u
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "1.4.1"
+VERSION = "1.4.2"
 REPO_RAW = os.environ.get("PM_UPDATE_URL", "https://raw.githubusercontent.com/973lean/promptmanager/main/")
 RELEASE = os.environ.get("PM_RELEASE_URL", "https://github.com/973lean/promptmanager/releases/latest/download/")
 FROZEN = getattr(sys, "frozen", False)  # running as PromptManager.exe
@@ -31,6 +31,26 @@ META = (
     "only where it helps; cut filler. Return ONLY the final prompt text: no preamble, no code "
     "fences, no commentary."
 )
+
+
+# ---------------- log + errors (there's no console, so never fail silently) ----------------
+def log(msg: str):
+    try:
+        with (HERE / "pm.log").open("a", encoding="utf-8") as f:
+            f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + msg + "\n")
+    except OSError:
+        pass
+
+
+def fatal(msg: str):
+    log("FATAL " + msg)
+    if os.name == "nt" and (FROZEN or sys.stdout is None):
+        try:
+            import ctypes
+            ctypes.windll.user32.MessageBoxW(0, msg, "Prompt Manager", 0x10)
+        except Exception:
+            pass
+    sys.exit(msg)
 
 
 # ---------------- settings ----------------
@@ -97,14 +117,24 @@ def apply_exe_update() -> None:
     """Windows lets you rename a running .exe, so: rename ours aside, drop the new one in its place."""
     exe = Path(sys.executable)
     data = fetch("PromptManager.exe", RELEASE)
-    if len(data) < 1_000_000 or data[:2] != b"MZ":
+    if len(data) < 1_000_000 or (os.name == "nt" and data[:2] != b"MZ"):
         raise RuntimeError("the downloaded app looks broken; keeping the current one")
     new, old = exe.with_name(exe.stem + ".new.exe"), exe.with_name(exe.stem + ".old.exe")
     new.write_bytes(data)
-    if old.exists():
-        old.unlink()
+    if os.name != "nt":
+        os.chmod(new, 0o755)
+    try:
+        if old.exists():
+            old.unlink()
+    except OSError:  # an older leftover is still locked; use a fresh name
+        old = exe.with_name(f"{exe.stem}.old{int(time.time())}.exe")
     os.replace(exe, old)
-    os.replace(new, exe)
+    try:
+        os.replace(new, exe)
+    except Exception:
+        os.replace(old, exe)  # never leave you without an app
+        raise
+    App.swapped = old
 
 
 def apply_update(manifest: dict) -> str:
@@ -137,7 +167,7 @@ UPDATE = {"status": "idle", "latest": None, "error": None}  # status: idle|check
 
 
 def bg_check(auto_apply: bool):
-    UPDATE.update(status="checking", error=None)
+    UPDATE.update(status="downloading" if auto_apply and UPDATE["status"] in ("available", "downloading") else "checking", error=None)
     try:
         info = check_update()
         UPDATE["latest"] = info["latest"]
@@ -149,16 +179,55 @@ def bg_check(auto_apply: bool):
         else:
             UPDATE["status"] = "available"
     except Exception as e:
+        log(f"update failed: {e}")
         UPDATE.update(status="error", error=str(e))
 
 
 def restart():
-    """Start a fresh copy (it waits for the port to free up), then exit."""
+    """Start the new copy, hand it the port, and only exit once it's answering.
+    If it doesn't come up (antivirus, broken download), take the port back and keep running."""
     args = [a for a in sys.argv[1:] if a not in ("--no-open", "--restarted")] + ["--no-open", "--restarted"]
-    flags = 0x08000000 if os.name == "nt" else 0  # CREATE_NO_WINDOW: no console pops up
     cmd = [sys.executable, *args] if FROZEN else [sys.executable, str(HERE / "pm.py"), *args]
-    subprocess.Popen(cmd, creationflags=flags, close_fds=True)
-    os._exit(0)
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("_PYI", "_MEI"))}
+    env["PYINSTALLER_RESET_ENVIRONMENT"] = "1"  # the new .exe must unpack itself, not reuse our temp folder
+    url = f"http://127.0.0.1:{App.port}/"
+    try:
+        proc = subprocess.Popen(cmd, env=env, creationflags=0x08000000 if os.name == "nt" else 0, close_fds=True)
+    except Exception as e:
+        return restart_failed(f"couldn't start the new version: {e}")
+    App.restarting = True
+    App.srv.shutdown()
+    App.srv.server_close()
+    for _ in range(60):  # up to ~15s
+        time.sleep(0.25)
+        if proc.poll() is not None:
+            break
+        if already_running(url):
+            log("restarted into the new version")
+            os._exit(0)
+    try:
+        proc.kill()
+    except Exception:
+        pass
+    restart_failed("the new version didn't start (often antivirus); still running the previous one")
+
+
+def restart_failed(why: str):
+    log("restart failed: " + why)
+    old = getattr(App, "swapped", None)
+    if FROZEN and old and old.exists():  # put the working .exe back
+        exe = Path(sys.executable)
+        try:
+            os.replace(exe, exe.with_name(exe.stem + ".bad.exe"))
+            os.replace(old, exe)
+            App.swapped = None
+        except OSError as e:
+            log(f"rollback failed: {e}")
+    UPDATE.update(status="error", error=why)
+    if getattr(App, "restarting", False):
+        App.srv = bind(App.port, retries=40)
+        App.restarting = False
+        App.resume.set()
 
 
 # ---------------- start with Windows ----------------
@@ -242,6 +311,10 @@ def refine(text: str) -> str:
 class App(BaseHTTPRequestHandler):
     dir: Path
     port: int
+    srv = None
+    swapped = None
+    restarting = False
+    resume = threading.Event()
     backed_up: set = set()
 
     def log_message(self, *a):
@@ -302,8 +375,8 @@ class App(BaseHTTPRequestHandler):
                 "background_color": "#f4f5f7", "theme_color": "#2f6bff",
                 "icons": [{"src": "/icon.png", "sizes": "512x512", "type": "image/png"}],
             }), "application/manifest+json")
-        if self.path == "/api/state" and self.authed():
-            return self.send(200, self.state())
+        if self.path == "/api/state":
+            return self.send(200, self.state()) if self.authed() else self.send(403, {"error": "stale page"})
         self.send(404, {"error": "not found"})
 
     def do_POST(self):
@@ -351,8 +424,10 @@ class App(BaseHTTPRequestHandler):
         if p == "/api/update/check":
             bg_check(auto_apply=False)
             return self.send(200, UPDATE)
-        if p == "/api/update/apply":
-            bg_check(auto_apply=True)
+        if p == "/api/update/apply":  # runs in the background; the page polls for progress
+            if UPDATE["status"] not in ("checking", "downloading"):
+                UPDATE["status"] = "downloading" if UPDATE["status"] == "available" else "checking"
+                threading.Thread(target=bg_check, args=(True,), daemon=True).start()
             return self.send(200, UPDATE)
         if p == "/api/restart":
             self.send(200, {"ok": True})
@@ -390,11 +465,11 @@ def already_running(url: str) -> bool:
 
 
 def main(argv):
-    port, open_browser, target, restarted = 7878, True, None, False
+    port, open_browser, target, restarted, explicit_port = 7878, True, None, False, False
     it = iter(argv)
     for a in it:
         if a == "--port":
-            port = int(next(it))
+            port, explicit_port = int(next(it)), True
         elif a == "--no-open":
             open_browser = False
         elif a in ("-h", "--help"):
@@ -406,39 +481,65 @@ def main(argv):
         else:
             target = Path(a).expanduser().resolve()
     App.dir = target or espanso_match_dir()
-    App.port = port
     # On Windows SO_REUSEADDR would let two copies share the port, so only use it elsewhere.
     ThreadingHTTPServer.allow_reuse_address = os.name != "nt"
+    srv = None
+    try:
+        srv = bind(port, retries=40 if restarted else 1)
+    except OSError:
+        if already_running(f"http://127.0.0.1:{port}/"):  # double-clicked again: just show the open one
+            return open_ui(f"http://127.0.0.1:{port}/")
+        if not explicit_port:  # something stuck holds the port: use the next free one
+            for p in range(port + 1, port + 20):
+                try:
+                    srv = bind(p, retries=1)
+                    log(f"port {port} was busy, using {p}")
+                    port = p
+                    break
+                except OSError:
+                    continue
+        if srv is None:
+            fatal(f"Port {port} is in use by another program, so Prompt Manager can't start.\n\nRestart your computer, or run it with --port 7900.")
+    App.port, App.srv = port, srv
     url = f"http://127.0.0.1:{port}/"
-    for attempt in range(40):
-        try:
-            srv = ThreadingHTTPServer(("127.0.0.1", port), App)
-            break
-        except OSError:
-            if restarted:  # the old copy is still shutting down
-                time.sleep(0.25)
-                continue
-            if already_running(url):  # double-clicked again: just show the open one
-                open_ui(url)
-                return
-            sys.exit(f"Port {port} is in use. Try: pm.py --port 7900")
-    else:
-        sys.exit(f"Port {port} is still in use.")
+    log(f"started {VERSION} on {url} ({'exe' if FROZEN else 'script'})")
     print(f"Prompt Manager {VERSION} → {url}\nfolder {App.dir}\nCtrl+C to quit")
+    if FROZEN:  # tidy up after an .exe update
+        for f in HERE.glob(Path(sys.executable).stem + ".old*.exe"):
+            try:
+                f.unlink()
+            except OSError:
+                pass
     if settings()["auto_update"] and not os.environ.get("PM_NO_UPDATE"):
         threading.Thread(target=bg_check, args=(True,), daemon=True).start()  # never delays startup
-    if FROZEN:  # tidy up after an .exe update
-        try:
-            (HERE / (Path(sys.executable).stem + ".old.exe")).unlink()
-        except OSError:
-            pass
     if open_browser:
         open_ui(url)
     try:
-        srv.serve_forever()
+        while True:
+            App.srv.serve_forever()
+            if not App.restarting:
+                break
+            App.resume.wait()  # a restart is handing over; resume here if it fails
+            App.resume.clear()
     except KeyboardInterrupt:
         pass
 
 
+def bind(port: int, retries: int = 1):
+    for i in range(retries):
+        try:
+            return ThreadingHTTPServer(("127.0.0.1", port), App)
+        except OSError:
+            if i == retries - 1:
+                raise
+            time.sleep(0.25)
+
+
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    try:
+        main(sys.argv[1:])
+    except SystemExit:
+        raise
+    except Exception:
+        import traceback
+        fatal("Prompt Manager hit an error and stopped:\n\n" + traceback.format_exc()[-1500:])

@@ -594,17 +594,19 @@ function updateState(u) {
   if (upd.status === "available") $("#ver").textContent = `v${upd.latest} available`;
   $("#ver").title = upd.status === "error" ? "Update check failed: " + upd.error : "Settings and updates";
   if (upd.status === "error") $("#ver").textContent = `v${version} ⚠`;
+  if (upd.status === "downloading") $("#ver").textContent = "Updating…";
+  if (upd.status === "updated" && autoRestart) { autoRestart = false; restartApp(); }
   if (upd.status === "updated") { $("#ver").textContent = "Restart to update"; if (!saidUpdated) { saidUpdated = true; toast(`Updated to v${upd.latest}.`, "Restart now", restartApp); } }
   if ($("#verDlg").open) verDlg();
 }
 function verDlg() {
   const s = upd.status, info = {
-    checking: "Checking…", current: `You're on the latest version (v${version}).`, available: `v${upd.latest} is available. You have v${version}.`,
-    updated: `v${upd.latest} is downloaded. Restart to start using it.`, error: `Couldn't check for updates: ${upd.error}`,
+    checking: "Checking…", downloading: `Downloading v${upd.latest}… it restarts by itself when done.`, current: `You're on the latest version (v${version}).`, available: `v${upd.latest} is available. You have v${version}.`,
+    updated: `v${upd.latest} is downloaded. Restart to start using it.`, error: `Update problem: ${upd.error}`,
   }[s] || `You have v${version}.`;
   $("#verInfo").textContent = info; $("#autoUp").checked = autoUpdate;
   $("#startupRow").classList.toggle("hidden", !isWin); $("#startup").checked = startup; $("#appWin").checked = appWin;
-  const b = $("#verAct"); b.disabled = s === "checking";
+  const b = $("#verAct"); b.disabled = s === "checking" || s === "downloading";
   b.textContent = s === "available" ? "Update now" : s === "updated" ? "Restart now" : "Check for updates";
 }
 $("#ver").onclick = () => { verDlg(); $("#verDlg").showModal(); };
@@ -616,16 +618,36 @@ $("#quit").onclick = async () => {
   document.body.innerHTML = '<div class="empty" style="padding-top:20vh"><b>Prompt Manager is closed.</b><br>Open it again from PromptManager.exe or PromptManager.pyw. You can close this tab.</div>';
 };
 $("#autoUp").onchange = async e => { autoUpdate = e.target.checked; await api("/api/settings", {auto_update: autoUpdate}); };
+let autoRestart = false;
 $("#verAct").onclick = async () => {
   if (upd.status === "updated") return restartApp();
-  updateState({...upd, status: "checking"});
-  const {data} = await api(upd.status === "available" ? "/api/update/apply" : "/api/update/check", {});
-  saidUpdated = true; updateState(data);
+  const updating = upd.status === "available";   // decide before the status changes
+  autoRestart = updating; saidUpdated = true;
+  updateState({...upd, status: updating ? "downloading" : "checking"});
+  const {data} = await api(updating ? "/api/update/apply" : "/api/update/check", {});
+  updateState(data);
+  if (updating) pollUpdate();
 };
+function pollUpdate() {  // follow the background download, then restart on our own
+  setTimeout(async () => {
+    try { const {data} = await api("/api/state"); updateState(data.update); } catch {}
+    if (upd.status === "downloading" || upd.status === "checking") pollUpdate();
+  }, 700);
+}
 async function restartApp() {
   if (files.some(f => f.dirty || f.saving)) return toast("Still saving, try again in a second.");
-  await api("/api/restart", {}); setStatus("Restarting…", "saving");
-  setTimeout(function retry() { fetch("/").then(() => location.reload(), () => setTimeout(retry, 400)); }, 700);
+  await api("/api/restart", {}); setStatus("Restarting…", "saving"); $("#ver").textContent = "Restarting…";
+  const until = Date.now() + 30000;
+  setTimeout(async function retry() {
+    try {
+      const r = await fetch("/api/state", {headers: {"X-Token": TOKEN}});
+      if (r.status === 403 || r.status === 404) return location.reload();  // a new copy is answering (it has a new key)
+      const d = await r.json();
+      if (d.update?.status === "error") { setStatus("Saved"); updateState(d.update); return toast(d.update.error); }  // it rolled back
+    } catch {}
+    if (Date.now() < until) setTimeout(retry, 500);
+    else { setStatus("Not responding", "err"); banner("Prompt Manager didn't come back after restarting. Open it again from PromptManager.exe."); }
+  }, 800);
 }
 
 // ---------- switch between app window and a Chrome tab ----------
