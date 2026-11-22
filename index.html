@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prompt Manager</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232f6bff'/><text x='16' y='22' font-size='16' font-family='monospace' text-anchor='middle' fill='white'>:p</text></svg>">
+<style>
+:root{
+  --bg:#f4f5f7; --paper:#fff; --ink:#1b1d21; --muted:#6b7079; --line:#e6e8ec; --soft:#f1f3f6;
+  --accent:#2f6bff; --accent-ink:#fff; --chip:#eef3ff; --chip-ink:#1f4fd1; --danger:#d93c3c; --ok:#1f9d55;
+  --shadow:0 1px 2px rgba(16,24,40,.05),0 4px 16px rgba(16,24,40,.06);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111215; --paper:#1a1c20; --ink:#e7e9ee; --muted:#9097a3; --line:#2a2d33; --soft:#23262b;
+  --accent:#5b8cff; --chip:#1f2a44; --chip-ink:#a9c1ff; --danger:#ff6b6b; --ok:#3ccf7f;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25); color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#111215; --paper:#1a1c20; --ink:#e7e9ee; --muted:#9097a3; --line:#2a2d33; --soft:#23262b;
+  --accent:#5b8cff; --chip:#1f2a44; --chip-ink:#a9c1ff; --danger:#ff6b6b; --ok:#3ccf7f;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25); color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,input,textarea{font:inherit;color:inherit}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+
+/* top bar */
+header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;padding:10px 20px;
+  background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.brand{font-weight:650;letter-spacing:-.01em;white-space:nowrap}
+.brand small{font-weight:400;color:var(--muted);margin-left:6px}
+.search{flex:1;max-width:420px;margin-left:auto;position:relative}
+.search input{width:100%;padding:7px 12px 7px 32px;border:1px solid var(--line);border-radius:8px;background:var(--paper);outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.status{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;white-space:nowrap;min-width:72px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.status.saving .dot{background:#e0a100}.status.err .dot{background:var(--danger)}
+.btn{border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:7px 12px;cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--soft)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:550}
+.btn.primary:hover{filter:brightness(1.07)}
+
+/* layout */
+.wrap{display:grid;grid-template-columns:240px minmax(0,1fr);gap:24px;max-width:1120px;margin:0 auto;padding:24px 20px 120px}
+nav{position:sticky;top:116px;align-self:start;max-height:calc(100vh - 96px);overflow:auto;font-size:13.5px}
+nav a{display:flex;gap:8px;align-items:baseline;padding:5px 8px;border-radius:6px;color:inherit;text-decoration:none}
+nav a:hover{background:var(--soft)}
+nav a .t{color:var(--chip-ink);flex:none}
+nav a .l{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+nav .cap{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em;padding:0 8px 6px}
+
+.paper{background:var(--paper);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);min-width:0}
+.meta{padding:14px 28px;border-bottom:1px solid var(--line);color:var(--muted);font-size:13px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.meta code{background:var(--soft);padding:1px 6px;border-radius:5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:rtl;text-align:left}
+.meta .hint{flex-basis:100%}
+
+.card{padding:20px 28px 18px;border-bottom:1px solid var(--line);scroll-margin-top:124px}
+.card:last-of-type{border-bottom:0}
+.card.flash{animation:flash 1.2s ease}
+@keyframes flash{from{background:var(--chip)}to{background:transparent}}
+.head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.trig{width:150px;padding:3px 9px;border-radius:6px;border:1px solid transparent;background:var(--chip);color:var(--chip-ink);outline:none}
+.trig:focus{border-color:var(--accent)}
+.trig.bad{background:color-mix(in srgb,var(--danger) 14%,transparent);color:var(--danger)}
+.label{flex:1;min-width:160px;border:0;background:transparent;font-weight:600;font-size:16.5px;outline:none;padding:2px 0}
+.label::placeholder,.body::placeholder{color:var(--muted);opacity:.7}
+.acts{margin-left:auto;display:flex;gap:2px;opacity:0;transition:opacity .12s}
+.card:hover .acts,.card:focus-within .acts{opacity:1}
+@media (hover:none){.acts{opacity:1}}
+.acts button{border:0;background:transparent;color:var(--muted);padding:4px 8px;border-radius:6px;cursor:pointer;font-size:13px}
+.acts button:hover{background:var(--soft);color:var(--ink)}
+.acts button.del:hover{color:var(--danger)}
+.body{display:block;width:100%;margin-top:8px;border:0;background:transparent;resize:none;outline:none;overflow:hidden;
+  line-height:1.6;min-height:1.6em;padding:0;white-space:pre-wrap}
+.empty{padding:56px 28px;text-align:center;color:var(--muted)}
+.empty b{color:var(--ink)}
+details.other{padding:14px 28px;border-top:1px solid var(--line);color:var(--muted);font-size:13.5px}
+details.other summary{cursor:pointer}
+details.other code{background:var(--soft);padding:1px 6px;border-radius:5px;margin:4px 4px 0 0;display:inline-block}
+.banner{margin:0 0 16px;padding:12px 16px;border-radius:10px;background:color-mix(in srgb,var(--danger) 12%,var(--paper));color:var(--danger);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);white-space:pre-wrap}
+.hidden{display:none!important}
+
+/* tabs */
+.tabs{position:sticky;top:57px;z-index:4;display:flex;gap:2px;align-items:center;padding:0 20px;overflow-x:auto;scrollbar-width:none;
+  background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.tabs::-webkit-scrollbar{display:none}
+.tab{border:0;background:transparent;padding:10px 12px 9px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;display:flex;gap:6px;align-items:center}
+.tab:hover{color:var(--ink)}
+.tab.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+.tab .n{font-size:12px;color:var(--muted);font-weight:400}
+.tab .more{padding:0 4px;border-radius:4px;color:var(--muted)}
+.tab .more:hover{background:var(--soft);color:var(--ink)}
+.tab.add{color:var(--accent)}
+.badge{font-size:12px;color:var(--muted);background:var(--soft);padding:1px 7px;border-radius:999px;white-space:nowrap}
+.acts select{border:0;background:transparent;color:var(--muted);font-size:13px;padding:4px 4px;border-radius:6px;cursor:pointer;max-width:110px}
+.acts select:hover{background:var(--soft);color:var(--ink)}
+.ver{border:0;background:transparent;color:var(--muted);font-size:12.5px;cursor:pointer;padding:4px 6px;border-radius:6px;white-space:nowrap}
+.ver:hover{background:var(--soft);color:var(--ink)}
+.ver.new{color:var(--accent);font-weight:600}
+
+/* dialogs */
+dialog{border:1px solid var(--line);border-radius:14px;background:var(--paper);color:var(--ink);padding:0;width:min(560px,calc(100vw - 32px));box-shadow:0 20px 60px rgba(0,0,0,.25)}
+dialog::backdrop{background:rgba(10,12,16,.35)}
+dialog .in{padding:20px 22px;display:grid;gap:12px}
+dialog h2{margin:0;font-size:17px}
+dialog p{margin:0;color:var(--muted);font-size:14px}
+dialog textarea{width:100%;min-height:160px;border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--bg);font:13px/1.5 ui-monospace,monospace;resize:vertical;outline:none}
+dialog textarea:focus{border-color:var(--accent)}
+dialog .row{display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
+dialog .row .grow{margin-right:auto;color:var(--muted);font-size:13.5px}
+.switch{display:flex;gap:10px;align-items:center;cursor:pointer;font-size:14px}
+.switch input{width:16px;height:16px;accent-color:var(--accent)}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;
+  background:var(--ink);color:var(--paper);padding:10px 14px;border-radius:10px;font-size:14px;display:flex;gap:12px;align-items:center;
+  transition:.18s;max-width:calc(100vw - 32px);box-shadow:var(--shadow)}
+.toast.on{opacity:1;transform:translateX(-50%);pointer-events:auto}
+.toast button{background:transparent;border:0;color:inherit;text-decoration:underline;cursor:pointer;padding:0}
+kbd{font:12px ui-monospace,monospace;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px;color:var(--muted)}
+
+@media (max-width:820px){
+  .wrap{grid-template-columns:minmax(0,1fr);padding:16px 16px 100px}
+  nav{display:none}
+  header{padding:10px 16px;flex-wrap:wrap}
+  .tabs{position:static;padding:0 10px}
+  .btn{padding:6px 10px}
+  .long,.status{display:none}
+  .card{scroll-margin-top:110px}
+  .search{order:5;max-width:none;flex-basis:100%;margin:0}
+  .card,.meta,details.other{padding-left:16px;padding-right:16px}
+  .trig{width:120px}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Prompts <small id="count"></small></div>
+  <label class="search">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" placeholder="Search all tabs" autocomplete="off">
+  </label>
+  <div class="status" id="status"><span class="dot"></span><span id="statusText">Loading…</span></div>
+  <button class="btn" id="importBtn">Import</button>
+  <button class="btn primary" id="add">+ New<span class="long"> prompt</span></button>
+  <button class="ver" id="ver" title="Updates"></button>
+</header>
+<div class="tabs" id="tabs"></div>
+
+<div class="wrap">
+  <nav id="nav"></nav>
+  <main>
+    <div id="banner" class="banner hidden"></div>
+    <div class="paper">
+      <div class="meta">Saves to <code id="path"></code><span class="hint">Live in espanso about 1s after you stop typing · <kbd>Ctrl</kbd>+<kbd>K</kbd> search</span></div>
+      <div id="cards"></div>
+      <details class="other hidden" id="other"><summary></summary><div id="otherList"></div></details>
+    </div>
+  </main>
+</div>
+
+<dialog id="importDlg"><form method="dialog" class="in">
+  <h2>Import prompts</h2>
+  <p>In Google Sheets, select your rows (include the header row) and copy, then paste here. A CSV file works too. Recognised columns: <b>trigger</b>, <b>prompt</b>, <b>label</b>, <b>group</b>. Each group becomes a tab.</p>
+  <textarea id="importText" placeholder="trigger	label	prompt	group&#10;:email	Cold email	Write a cold email to…	Sales"></textarea>
+  <div class="row"><span class="grow" id="importInfo">Nothing to import yet.</span>
+    <label class="btn">CSV file<input type="file" id="importFile" accept=".csv,.tsv,.txt" hidden></label>
+    <button class="btn" value="cancel">Cancel</button>
+    <button class="btn primary" id="importGo" value="go" disabled>Import</button></div>
+</form></dialog>
+
+<dialog id="verDlg"><form method="dialog" class="in">
+  <h2>Updates</h2>
+  <p id="verInfo"></p>
+  <label class="switch"><input type="checkbox" id="autoUp"> Update automatically when the app starts</label>
+  <p>Updates only replace the app's own files. Your prompts aren't touched.</p>
+  <div class="row"><button class="btn" value="close">Close</button><button class="btn primary" id="verAct" type="button">Check for updates</button></div>
+</form></dialog>
+
+<div class="toast" id="toast"><span id="toastText"></span><button id="toastBtn" class="hidden"></button></div>
+
+<script src="/js-yaml.min.js"></script>
+<script>
+const TOKEN = "__TOKEN__";
+const META = "You are an expert prompt engineer. Rewrite my prompt below so it gets the best possible result. Keep my intent, voice and any placeholders ($|$ marks the cursor, keep it). Be clear, specific and concise; add structure only where it helps. Return only the final prompt.\n\nPrompt:\n";
+const $ = s => document.querySelector(s);
+let files = [], active = "base.yml", dir = "", hasClaude = false, version = "", upd = {}, autoUpdate = true, uid = 0, saidUpdated = false;
+
+// ---------- helpers ----------
+async function api(path, body) {
+  const r = await fetch(path, {method: body ? "POST" : "GET", headers: {"X-Token": TOKEN, "Content-Type": "application/json"}, body: body && JSON.stringify(body)});
+  return {status: r.status, data: await r.json()};
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const tabName = n => n === "base.yml" ? "General" : (n => n.charAt(0).toUpperCase() + n.slice(1))(n.replace(/\.ya?ml$/, "").replace(/[-_]+/g, " "));
+const slug = t => t.trim().toLowerCase().replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-").slice(0, 60);
+const fileOf = n => files.find(f => f.name === n);
+const cur = () => fileOf(active) || files[0];
+const items = f => f.slots.filter(s => s.raw === undefined);
+const allItems = () => files.flatMap(items);
+const trigsOf = it => it.trig.split(",").map(t => t.trim()).filter(Boolean);
+const isSimple = m => m && typeof m === "object" && typeof m.replace === "string" && !m.vars && !m.regex && !m.form &&
+  (typeof m.trigger === "string" || (Array.isArray(m.triggers) && m.triggers.every(t => typeof t === "string")));
+
+// ---------- load ----------
+function parseFile(fs) {
+  const f = {name: fs.name, mtime: fs.mtime, doc: {}, slots: [], readonly: false, error: "", dirty: false, saving: false, timer: 0};
+  try {
+    f.doc = jsyaml.load(fs.text) || {};
+    if (typeof f.doc !== "object" || Array.isArray(f.doc)) throw new Error("top level must be a mapping");
+  } catch (e) { f.readonly = true; f.error = e.message; f.doc = {}; }
+  f.slots = (Array.isArray(f.doc.matches) ? f.doc.matches : []).map(m => isSimple(m)
+    ? {id: ++uid, f, m, trig: m.triggers ? m.triggers.join(", ") : m.trigger, label: m.label || "", body: m.replace}
+    : {raw: m});
+  return f;
+}
+function apply(s) {
+  dir = s.dir; hasClaude = s.claude; version = s.version; autoUpdate = s.auto_update;
+  files = s.files.map(parseFile);
+  if (!fileOf(active)) active = "base.yml";
+  updateState(s.update); render();
+}
+async function load() { const {data} = await api("/api/state"); apply(data); setStatus("Saved"); }
+
+// ---------- save ----------
+function toMatch(it) {
+  const trigs = trigsOf(it);
+  if (!trigs.length) return [];
+  const rest = {...it.m}; for (const k of ["trigger", "triggers", "label", "replace"]) delete rest[k];
+  const out = trigs.length > 1 ? {triggers: trigs} : {trigger: trigs[0]};
+  if (it.label.trim()) out.label = it.label.trim();
+  out.replace = it.body;
+  return [{...out, ...rest}];
+}
+function serialize(f) {
+  const out = {...f.doc, matches: f.slots.flatMap(s => s.raw !== undefined ? [s.raw] : toMatch(s))};
+  const text = "# Edited with Prompt Manager (first save each session is backed up to ." + "bak)\n" + jsyaml.dump(out, {lineWidth: -1, noRefs: true});
+  if (JSON.stringify(jsyaml.load(text)) !== JSON.stringify(out)) throw new Error("YAML round-trip check failed; not saving.");
+  return text;
+}
+function changed(f, now) {
+  if (f.readonly) return;
+  f.dirty = true; setStatus("Editing…", "saving");
+  clearTimeout(f.timer); f.timer = setTimeout(() => save(f), now ? 0 : 600);
+}
+async function save(f) {
+  if (f.saving) { f.timer = setTimeout(() => save(f), 300); return; }
+  f.saving = true; f.dirty = false; setStatus("Saving…", "saving");
+  try {
+    const {status, data} = await api("/api/save", {name: f.name, text: serialize(f), mtime: f.mtime});
+    if (status === 200) f.mtime = data.mtime;
+    else if (status === 409) { apply(data); toast(`${tabName(f.name)} changed outside the editor, so it was reloaded.`); }
+    else throw new Error(data.error || status);
+  } catch (e) { setStatus("Not saved", "err"); toast("Couldn't save: " + e.message); f.dirty = true; f.saving = false; return; }
+  f.saving = false;
+  const busy = files.some(x => x.dirty || x.saving);
+  setStatus(busy ? "Saving…" : "Saved", busy ? "saving" : "");
+}
+// pick up edits made elsewhere while you're not typing
+setInterval(async () => {
+  if (document.hidden) return;
+  try {
+    const {data} = await api("/api/state");
+    updateState(data.update);
+    if (files.some(f => f.dirty || f.saving) || document.activeElement?.closest?.(".card,dialog")) return;
+    const sig = l => l.map(f => f.name + f.mtime).join("|");
+    if (sig(data.files) !== sig(files)) { const y = scrollY; apply(data); scrollTo(0, y); }
+  } catch {}
+}, 2500);
+
+// ---------- render ----------
+function render() {
+  renderTabs();
+  const q = $("#q").value.trim().toLowerCase(), f = cur(), box = $("#cards");
+  $("#path").textContent = "‎" + (q ? dir : dir + "/" + f.name) + "‎"; $("#path").title = $("#path").textContent;
+  banner(f.readonly && !q ? `${f.name} has a YAML error, so editing it is paused to protect it. Fix it in a text editor and this page reloads on its own.\n\n${f.error}` : "");
+  const list = q ? allItems().filter(it => (it.trig + " " + it.label + " " + it.body).toLowerCase().includes(q)) : items(f);
+  box.innerHTML = list.length ? "" : q ? `<div class="empty">No prompts match “${esc(q)}”.</div>`
+    : `<div class="empty"><b>No prompts in ${esc(tabName(f.name))} yet.</b><br>Click <b>+ New prompt</b>, give it a trigger like <span class="mono">:email</span>, and write it.<br>Or <b>Import</b> rows from a Google Sheet.</div>`;
+  const frag = document.createDocumentFragment();
+  for (const it of list) frag.append(card(it, !!q));
+  box.append(frag);
+  const other = q ? [] : f.slots.filter(s => s.raw !== undefined);
+  $("#other").classList.toggle("hidden", !other.length);
+  $("#other summary").textContent = `${other.length} advanced match${other.length === 1 ? "" : "es"} (variables, regex, forms): kept exactly as they are`;
+  $("#otherList").innerHTML = other.map(s => `<code>${esc(s.raw?.trigger || s.raw?.triggers?.join(", ") || s.raw?.regex || "match")}</code>`).join("");
+  refresh(list);
+}
+function renderTabs() {
+  const q = $("#q").value.trim();
+  $("#tabs").innerHTML = files.map(f => `<button class="tab${!q && f.name === active ? " on" : ""}" data-n="${esc(f.name)}">${esc(tabName(f.name))}<span class="n">${items(f).length}</span>${!q && f.name === active && f.name !== "base.yml" ? `<span class="more" data-more title="Rename or delete">⋯</span>` : ""}</button>`).join("")
+    + `<button class="tab add" id="addTab" title="New tab">+ Tab</button>`;
+  $("#count").textContent = allItems().length || "";
+}
+function card(it, showTab) {
+  const el = document.createElement("section");
+  el.className = "card"; el.id = "p" + it.id;
+  const opts = files.map(f => `<option value="${esc(f.name)}"${f === it.f ? " selected" : ""}>${esc(tabName(f.name))}</option>`).join("");
+  el.innerHTML = `<div class="head">
+      <input class="trig mono" placeholder=":trigger" spellcheck="false" aria-label="Trigger">
+      <input class="label" placeholder="Label (shows in espanso search)" aria-label="Label">
+      ${showTab ? `<span class="badge">${esc(tabName(it.f.name))}</span>` : ""}
+      <div class="acts"><button class="copy" title="Copy the prompt">Copy</button><button class="refine" title="Improve this prompt">Refine</button><select class="mv" title="Move to tab" aria-label="Move to tab"><option disabled>Move to…</option>${opts}</select><button class="del" title="Delete">Delete</button></div>
+    </div>
+    <textarea class="body" rows="1" placeholder="Write the prompt. $|$ marks where the cursor lands." aria-label="Prompt"></textarea>`;
+  const [trig, label, body] = [el.querySelector(".trig"), el.querySelector(".label"), el.querySelector(".body")];
+  trig.value = it.trig; label.value = it.label; body.value = it.body;
+  [trig, label, body].forEach(i => i.readOnly = it.f.readonly);
+  trig.oninput = () => { it.trig = trig.value; refresh(); changed(it.f); };
+  label.oninput = () => { it.label = label.value; refresh(); changed(it.f); };
+  body.oninput = () => { it.body = body.value; grow(body); changed(it.f); };
+  el.querySelector(".copy").onclick = () => copy(it.body, "Prompt copied");
+  el.querySelector(".refine").onclick = e => refine(it, body, e.target);
+  el.querySelector(".mv").onchange = e => move(it, fileOf(e.target.value));
+  el.querySelector(".del").onclick = () => {
+    const f = it.f; if (f.readonly) return;
+    const i = f.slots.indexOf(it); f.slots.splice(i, 1); render(); changed(f);
+    toast(`Deleted ${it.trig || "prompt"}`, "Undo", () => { f.slots.splice(i, 0, it); render(); changed(f); });
+  };
+  requestAnimationFrame(() => grow(body));
+  return el;
+}
+const grow = t => { t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; };
+addEventListener("resize", () => document.querySelectorAll(".body").forEach(grow));
+
+function refresh(list) { // sidebar + warnings, without touching the inputs you're typing in
+  list = list || ($("#q").value.trim() ? null : items(cur()));
+  const counts = {};
+  allItems().forEach(it => trigsOf(it).forEach(t => counts[t] = (counts[t] || 0) + 1));
+  if (list) $("#nav").innerHTML = (list.length ? `<div class="cap">${$("#q").value.trim() ? "Results" : esc(tabName(cur().name))}</div>` : "") + list.map(it =>
+    `<a href="#p${it.id}" data-id="${it.id}"><span class="t mono">${esc(it.trig || "(none)")}</span><span class="l">${esc(it.label || it.body.split("\n")[0])}</span></a>`).join("");
+  else document.querySelectorAll("nav a").forEach(a => { const it = allItems().find(x => x.id == a.dataset.id); if (it) { a.querySelector(".t").textContent = it.trig || "(none)"; a.querySelector(".l").textContent = it.label || it.body.split("\n")[0]; } });
+  for (const it of allItems()) {
+    const t = document.querySelector(`#p${it.id} .trig`); if (!t) continue;
+    const bad = !it.trig.trim() ? "Needs a trigger, or it won't be saved" :
+      trigsOf(it).some(x => counts[x] > 1) ? "Duplicate trigger: espanso will only use one" : "";
+    t.classList.toggle("bad", !!bad); t.title = bad;
+  }
+}
+
+// ---------- tabs ----------
+$("#tabs").onclick = async e => {
+  if (e.target.closest("#addTab")) return newTab();
+  const t = e.target.closest(".tab"); if (!t) return;
+  if (e.target.closest("[data-more]")) return tabMenu(t.dataset.n);
+  $("#q").value = ""; active = t.dataset.n; render(); scrollTo(0, 0);
+};
+async function newTab(name) {
+  name = name ?? prompt("New tab name (e.g. Coding, Writing, Sales):");
+  if (!name || !slug(name)) return null;
+  const fname = slug(name) + ".yml";
+  if (!fileOf(fname)) { files.push(parseFile({name: fname, mtime: "0", text: "matches: []\n"})); await save(fileOf(fname)); }
+  active = fname; $("#q").value = ""; render();
+  return fileOf(fname);
+}
+async function tabMenu(n) {
+  const f = fileOf(n), choice = prompt(`Rename "${tabName(n)}", or type DELETE to remove this tab and its ${items(f).length} prompts (a .bak copy is kept):`, tabName(n));
+  if (!choice || choice === tabName(n)) return;
+  if (files.some(x => x.dirty || x.saving)) return toast("Still saving, try again in a second.");
+  const {status, data} = choice === "DELETE" ? await api("/api/delete", {name: n}) : await api("/api/rename", {from: n, to: slug(choice) + ".yml"});
+  if (status !== 200) return toast(data.error);
+  active = choice === "DELETE" ? "base.yml" : slug(choice) + ".yml"; apply(data);
+}
+function move(it, to) {
+  if (!to || to === it.f) return;
+  const from = it.f; from.slots.splice(from.slots.indexOf(it), 1);
+  it.f = to; to.slots.push(it); render(); changed(from, true); changed(to, true);
+  toast(`Moved to ${tabName(to.name)}`);
+}
+
+// ---------- actions ----------
+$("#add").onclick = () => {
+  const f = cur(); if (f.readonly) return;
+  $("#q").value = "";
+  const it = {id: ++uid, f, m: {}, trig: ":", label: "", body: ""};
+  f.slots.push(it); render();
+  const el = $("#p" + it.id); el.scrollIntoView({block: "center", behavior: "smooth"});
+  const t = el.querySelector(".trig"); t.focus(); t.setSelectionRange(1, 1);
+};
+let qTimer; $("#q").oninput = () => { clearTimeout(qTimer); qTimer = setTimeout(render, 80); };
+$("#nav").onclick = e => { const a = e.target.closest("a"); if (!a) return; e.preventDefault();
+  const el = $("#p" + a.dataset.id); el.scrollIntoView({block: "start", behavior: "smooth"}); el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); };
+addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); $("#q").focus(); $("#q").select(); } });
+
+async function refine(it, ta, btn) {
+  if (!it.body.trim()) return toast("Write something first, then refine it.");
+  if (!hasClaude) return copy(META + it.body, "Refine prompt copied. Paste it into Claude, then paste the result back here.");
+  if (it.f.readonly) return;
+  btn.textContent = "Refining…"; btn.disabled = true;
+  try {
+    const {status, data} = await api("/api/refine", {text: it.body});
+    if (status !== 200) throw new Error(data.error);
+    const old = it.body; it.body = ta.value = data.text; grow(ta); changed(it.f);
+    toast("Refined with Claude", "Undo", () => { it.body = ta.value = old; grow(ta); changed(it.f); });
+  } catch (e) { toast("Refine failed: " + e.message); }
+  btn.textContent = "Refine"; btn.disabled = false;
+}
+async function copy(text, msg) {
+  try { await navigator.clipboard.writeText(text); toast(msg); } catch { toast("Your browser blocked the clipboard."); }
+}
+
+// ---------- import (Google Sheets paste / CSV) ----------
+function parseTable(text) {
+  text = text.replace(/^﻿/, "").replace(/\r\n?/g, "\n");
+  const first = text.split("\n")[0], d = first.includes("\t") ? "\t" : ",";
+  const rows = []; let row = [], cell = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += c; }
+    else if (c === '"' && cell === "") q = true;
+    else if (c === d) { row.push(cell); cell = ""; }
+    else if (c === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; }
+    else cell += c;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(c => c.trim()));
+}
+const COLS = {trig: /trigger|shortcut|keyword|command|abbrev|^key$/, body: /prompt|replace|replacement|expansion|text|content|body|output/, label: /label|name|title|description|desc/, group: /group|tab|category|folder|section|type/};
+function readRows(text) {
+  const rows = parseTable(text); if (!rows.length) return {list: [], note: "Nothing to import yet."};
+  const head = rows[0].map(h => h.trim().toLowerCase()), map = {};
+  head.forEach((h, i) => { for (const k in COLS) if (map[k] === undefined && COLS[k].test(h)) { map[k] = i; break; } });
+  let data = rows.slice(1);
+  if (map.trig === undefined || map.body === undefined) {
+    const n = rows[0].length;
+    if (n === 2) Object.assign(map, {trig: 0, body: 1});
+    else if (n === 3) Object.assign(map, {trig: 0, label: 1, body: 2});
+    else return {list: [], note: "Add a header row with at least “trigger” and “prompt” columns."};
+    data = (map.trig !== undefined && /trigger/.test(head[0])) ? rows.slice(1) : rows;
+  }
+  const list = data.map(r => {
+    let t = (r[map.trig] || "").trim();
+    if (t && /^[A-Za-z0-9]/.test(t)) t = ":" + t;
+    return {trig: t.replace(/\s+/g, ""), body: (r[map.body] || "").replace(/\s+$/, ""), label: (r[map.label] || "").trim(), group: (r[map.group] || "").trim()};
+  }).filter(r => r.trig && r.body);
+  const have = new Set(allItems().flatMap(trigsOf));
+  const fresh = list.filter(r => !have.has(r.trig)), groups = new Set(fresh.map(r => r.group).filter(Boolean));
+  return {list: fresh, note: fresh.length ? `${fresh.length} prompt${fresh.length === 1 ? "" : "s"} to import${groups.size ? ` into ${groups.size} tab${groups.size === 1 ? "" : "s"}` : ` into ${tabName(cur().name)}`}${list.length - fresh.length ? `, ${list.length - fresh.length} skipped (trigger already exists)` : ""}.` : list.length ? "All of these triggers already exist." : "No rows with both a trigger and a prompt."};
+}
+let pending = [];
+const preview = () => { const r = readRows($("#importText").value); pending = r.list; $("#importInfo").textContent = r.note; $("#importGo").disabled = !pending.length; };
+$("#importBtn").onclick = () => { $("#importText").value = ""; preview(); $("#importDlg").showModal(); };
+$("#importText").oninput = preview;
+$("#importFile").onchange = async e => { const f = e.target.files[0]; if (f) { $("#importText").value = await f.text(); preview(); } e.target.value = ""; };
+$("#importDlg").onclose = async () => {
+  if ($("#importDlg").returnValue !== "go" || !pending.length) return;
+  const keep = active, touched = new Set();
+  for (const r of pending) {
+    const f = r.group ? (fileOf(slug(r.group) + ".yml") || (r.group.toLowerCase() === "general" ? fileOf("base.yml") : await newTab(r.group))) : fileOf(keep);
+    if (!f || f.readonly) continue;
+    f.slots.push({id: ++uid, f, m: {}, trig: r.trig, label: r.label, body: r.body}); touched.add(f);
+  }
+  touched.forEach(f => changed(f, true));
+  active = pending[0].group ? (fileOf(slug(pending[0].group) + ".yml") || fileOf(keep)).name : keep;
+  render(); toast(`Imported ${pending.length} prompts`);
+};
+
+// ---------- updates ----------
+function updateState(u) {
+  upd = u || {};
+  $("#ver").textContent = "v" + version;
+  $("#ver").classList.toggle("new", upd.status === "available" || upd.status === "updated");
+  if (upd.status === "available") $("#ver").textContent = `v${upd.latest} available`;
+  if (upd.status === "updated") { $("#ver").textContent = "Restart to update"; if (!saidUpdated) { saidUpdated = true; toast(`Updated to v${upd.latest}.`, "Restart now", restartApp); } }
+  if ($("#verDlg").open) verDlg();
+}
+function verDlg() {
+  const s = upd.status, info = {
+    checking: "Checking…", current: `You're on the latest version (v${version}).`, available: `v${upd.latest} is available. You have v${version}.`,
+    updated: `v${upd.latest} is downloaded. Restart to start using it.`, error: `Couldn't check for updates: ${upd.error}`,
+  }[s] || `You have v${version}.`;
+  $("#verInfo").textContent = info; $("#autoUp").checked = autoUpdate;
+  const b = $("#verAct"); b.disabled = s === "checking";
+  b.textContent = s === "available" ? "Update now" : s === "updated" ? "Restart now" : "Check for updates";
+}
+$("#ver").onclick = () => { verDlg(); $("#verDlg").showModal(); };
+$("#autoUp").onchange = async e => { autoUpdate = e.target.checked; await api("/api/settings", {auto_update: autoUpdate}); };
+$("#verAct").onclick = async () => {
+  if (upd.status === "updated") return restartApp();
+  updateState({...upd, status: "checking"});
+  const {data} = await api(upd.status === "available" ? "/api/update/apply" : "/api/update/check", {});
+  saidUpdated = true; updateState(data);
+};
+async function restartApp() {
+  if (files.some(f => f.dirty || f.saving)) return toast("Still saving, try again in a second.");
+  await api("/api/restart", {}); setStatus("Restarting…", "saving");
+  setTimeout(function retry() { fetch("/").then(() => location.reload(), () => setTimeout(retry, 400)); }, 700);
+}
+
+// ---------- ui bits ----------
+function setStatus(t, cls = "") { $("#statusText").textContent = t; $("#status").className = "status " + cls; }
+function banner(t) { $("#banner").textContent = t; $("#banner").classList.toggle("hidden", !t); }
+let toastTimer;
+function toast(text, action, fn) {
+  $("#toastText").textContent = text;
+  const b = $("#toastBtn"); b.classList.toggle("hidden", !action); b.textContent = action || ""; b.onclick = () => { fn(); hide(); };
+  $("#toast").classList.add("on"); clearTimeout(toastTimer); toastTimer = setTimeout(hide, action ? 7000 : 3000);
+}
+const hide = () => $("#toast").classList.remove("on");
+addEventListener("beforeunload", e => { if (files.some(f => f.dirty || f.saving)) { files.filter(f => f.dirty).forEach(save); e.preventDefault(); } });
+
+load().catch(e => { setStatus("Offline", "err"); banner("Can't reach Prompt Manager. Is pm.py still running?\n" + e.message); });
+</script>
+</body>
+</html>
