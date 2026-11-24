@@ -250,6 +250,7 @@ function apply(s) {
   files = s.files.map(parseFile);
   if (!fileOf(active)) active = "base.yml";
   updateState(s.update); render();
+  if (s.port_note && !banner.shown) { banner.shown = true; toast(s.port_note); }
 }
 async function load() { const {data} = await api("/api/state"); apply(data); setStatus("Saved"); }
 

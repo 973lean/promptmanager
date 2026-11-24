@@ -14,7 +14,7 @@ import json, os, platform, re, secrets, ssl, subprocess, sys, threading, time, u
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "1.4.4"
+VERSION = "1.4.5"
 REPO_RAW = os.environ.get("PM_UPDATE_URL", "https://raw.githubusercontent.com/973lean/promptmanager/main/")
 RELEASE = os.environ.get("PM_RELEASE_URL", "https://github.com/973lean/promptmanager/releases/latest/download/")
 FROZEN = getattr(sys, "frozen", False)  # running as PromptManager.exe
@@ -356,6 +356,7 @@ class App(BaseHTTPRequestHandler):
     dir: Path
     port: int
     srv = None
+    port_note = ""
     swapped = None
     restarting = False
     resume = threading.Event()
@@ -400,7 +401,7 @@ class App(BaseHTTPRequestHandler):
             "dir": str(self.dir), "files": [self.file_state(f) for f in files], "claude": has_claude(),
             "version": VERSION, "update": UPDATE, "auto_update": settings()["auto_update"],
             "windows": os.name == "nt", "startup": os.name == "nt" and startup_file().exists(),
-            "app_window": settings()["app_window"], "exe": FROZEN,
+            "app_window": settings()["app_window"], "exe": FROZEN, "port_note": App.port_note,
         }
 
     def do_GET(self):
@@ -539,11 +540,17 @@ def main(argv):
     except OSError:
         if already_running(f"http://127.0.0.1:{port}/"):  # double-clicked again: just show the open one
             return open_ui(f"http://127.0.0.1:{port}/")
-        if not explicit_port:  # something stuck holds the port: use the next free one
+        if free_port_from_stuck_copy(port):  # a broken old copy was squatting on it
+            try:
+                srv = bind(port, retries=20)
+            except OSError:
+                pass
+        if srv is None and not explicit_port:  # something stuck holds the port: use the next free one
             for p in range(port + 1, port + 20):
                 try:
                     srv = bind(p, retries=1)
                     log(f"port {port} was busy, using {p}")
+                    App.port_note = f"Running on port {p} because another program is using {port}, so shortcuts to 127.0.0.1:{port} won't work until you restart your computer."
                     port = p
                     break
                 except OSError:
@@ -573,6 +580,35 @@ def main(argv):
             App.resume.clear()
     except KeyboardInterrupt:
         pass
+
+
+def free_port_from_stuck_copy(port: int) -> bool:
+    """Windows: if an old, unresponsive Prompt Manager holds our port, end it. Never touches other programs."""
+    if os.name != "nt":
+        return False
+    hide = 0x08000000
+    try:
+        out = subprocess.run(["netstat", "-ano", "-p", "tcp"], capture_output=True, text=True, timeout=10, creationflags=hide).stdout
+        pids = {ln.split()[-1] for ln in out.splitlines() if f"127.0.0.1:{port} " in ln and "LISTENING" in ln}
+        killed = False
+        for pid in pids:
+            if not pid.isdigit() or int(pid) == os.getpid():
+                continue
+            info = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command",
+                                   f"$p = Get-CimInstance Win32_Process -Filter 'ProcessId={pid}'; \"$($p.Name)|$($p.CommandLine)\""],
+                                  capture_output=True, text=True, timeout=15, creationflags=hide).stdout.strip()
+            name, _, cmd = info.partition("|")
+            ours = name.lower().startswith("promptmanager") or (name.lower() in ("python.exe", "pythonw.exe") and ("pm.py" in cmd or "PromptManager" in cmd))
+            if ours:
+                subprocess.run(["taskkill", "/F", "/T", "/PID", pid], capture_output=True, timeout=10, creationflags=hide)
+                log(f"ended a stuck copy holding port {port}: {name} (pid {pid})")
+                killed = True
+            else:
+                log(f"port {port} is used by another program: {name} (pid {pid})")
+        return killed
+    except Exception as e:
+        log(f"couldn't check who holds port {port}: {e}")
+        return False
 
 
 def bind(port: int, retries: int = 1):
