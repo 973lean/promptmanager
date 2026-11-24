@@ -14,7 +14,7 @@ import json, os, platform, re, secrets, ssl, subprocess, sys, threading, time, u
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "1.4.3"
+VERSION = "1.4.4"
 REPO_RAW = os.environ.get("PM_UPDATE_URL", "https://raw.githubusercontent.com/973lean/promptmanager/main/")
 RELEASE = os.environ.get("PM_RELEASE_URL", "https://github.com/973lean/promptmanager/releases/latest/download/")
 FROZEN = getattr(sys, "frozen", False)  # running as PromptManager.exe
@@ -251,6 +251,50 @@ def set_startup(on: bool):
         )
 
 
+# ---------------- shortcuts (Windows) ----------------
+def make_shortcuts() -> str:
+    """Desktop + Start menu shortcuts that start the app itself (a Chrome shortcut only opens the page)."""
+    target, args = (sys.executable, "") if FROZEN else (str(Path(sys.executable).with_name("pythonw.exe")), f'"{HERE / "pm.py"}"')
+    ps = (
+        "$w = New-Object -ComObject WScript.Shell; "
+        "foreach ($d in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) { "
+        "$s = $w.CreateShortcut((Join-Path $d 'Prompt Manager.lnk')); "
+        f"$s.TargetPath = '{target}'; $s.Arguments = '{args}'; $s.WorkingDirectory = '{HERE}'; "
+        f"$s.IconLocation = '{target},0'; $s.Description = 'Prompt Manager'; $s.Save() }}"
+    )
+    r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
+                       capture_output=True, text=True, timeout=20, creationflags=0x08000000)
+    if r.returncode:
+        raise RuntimeError(r.stderr.strip()[:300] or "PowerShell failed")
+    return "Added Prompt Manager to your desktop and Start menu."
+
+
+SW_JS = """// Shows a friendly page instead of Chrome's error when Prompt Manager isn't running.
+const OFF = "/offline.html";
+self.addEventListener("install", e => { e.waitUntil(caches.open("pm-v1").then(c => c.add(OFF))); self.skipWaiting(); });
+self.addEventListener("activate", e => e.waitUntil(self.clients.claim()));
+self.addEventListener("fetch", e => {
+  if (e.request.mode === "navigate") e.respondWith(fetch(e.request).catch(() => caches.match(OFF)));
+});
+"""
+
+OFFLINE_HTML = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prompt Manager</title><style>
+:root{--bg:#f4f5f7;--ink:#1b1d21;--muted:#6b7079;--accent:#2f6bff;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#111215;--ink:#e7e9ee;--muted:#9097a3;--accent:#5b8cff;color-scheme:dark}}
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--ink);font:15px/1.6 ui-sans-serif,system-ui,"Segoe UI",sans-serif;padding:24px;box-sizing:border-box}
+main{max-width:420px;text-align:center}h1{font-size:19px;margin:0 0 8px}p{color:var(--muted);margin:0 0 10px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:8px;animation:p 1.4s infinite}
+@keyframes p{50%{opacity:.25}}</style></head><body><main>
+<h1>Prompt Manager isn't running</h1>
+<p>Open <b>PromptManager.exe</b> (or the Prompt Manager shortcut on your desktop). This page opens by itself as soon as it's running.</p>
+<p><span class="dot"></span>Waiting…</p>
+<p style="font-size:13px">Tip: Settings → <b>Start with Windows</b> keeps it ready in the background.</p>
+</main><script>
+setInterval(() => fetch("/", {cache: "no-store"}).then(r => r.ok && location.reload()).catch(() => {}), 1500);
+</script></body></html>"""
+
+
 # ---------------- open the window ----------------
 def find_browser():
     """Chrome first, then Edge. Returns ("win", exe path) / ("mac", app name) / None."""
@@ -367,6 +411,10 @@ class App(BaseHTTPRequestHandler):
             return self.send(200, html, "text/html")
         if self.path == "/js-yaml.min.js":
             return self.send(200, (RES / "vendor/js-yaml.min.js").read_bytes(), "text/javascript")
+        if self.path == "/sw.js":
+            return self.send(200, SW_JS, "text/javascript")
+        if self.path == "/offline.html":
+            return self.send(200, OFFLINE_HTML, "text/html")
         if self.path == "/icon.png":
             return self.send(200, (RES / "icon.png").read_bytes(), "image/png")
         if self.path == "/manifest.webmanifest":  # lets Chrome/Edge "Install" it as an app
@@ -449,6 +497,8 @@ class App(BaseHTTPRequestHandler):
             st = settings(); st["app_window"] = b.get("mode") == "window"; save_settings(st)
             open_ui(f"http://127.0.0.1:{self.port}/", "window" if b.get("mode") == "window" else "tab")
             return self.send(200, {"ok": True, "browser": (find_browser() or ("", "your browser"))[1]})
+        if p == "/api/shortcut":
+            return self.send(200, {"message": make_shortcuts()})
         if p == "/api/quit":
             self.send(200, {"ok": True})
             threading.Timer(0.3, lambda: os._exit(0)).start()

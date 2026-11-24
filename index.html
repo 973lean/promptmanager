@@ -204,6 +204,7 @@ kbd{font:12px ui-monospace,monospace;border:1px solid var(--line);border-bottom-
   <label class="switch"><input type="checkbox" id="appWin"> Open in its own app window (Chrome or Edge, no tabs or address bar)</label>
   <label class="switch hidden" id="startupRow"><input type="checkbox" id="startup"> Start with Windows (runs quietly in the background)</label>
   <p>Updates only replace the app's own files. Your prompts aren't touched.</p>
+  <p class="hidden" id="shortcutRow"><button class="btn" id="shortcut" type="button">Add desktop &amp; Start menu shortcut</button> <span style="font-size:13px">opens the app itself, even when it isn't running</span></p>
   <div class="row"><button class="btn grow-left" id="quit" type="button">Quit Prompt Manager</button><button class="btn" value="close">Close</button><button class="btn primary" id="verAct" type="button">Check for updates</button></div>
 </form></dialog>
 
@@ -603,13 +604,17 @@ function verDlg() {
     updated: `v${upd.latest} is downloaded. Restart to start using it.`, error: `Update problem: ${upd.error}`,
   }[s] || `You have v${version}.`;
   $("#verInfo").textContent = info; $("#autoUp").checked = autoUpdate;
-  $("#startupRow").classList.toggle("hidden", !isWin); $("#startup").checked = startup; $("#appWin").checked = appWin;
+  $("#startupRow").classList.toggle("hidden", !isWin); $("#shortcutRow").classList.toggle("hidden", !isWin); $("#startup").checked = startup; $("#appWin").checked = appWin;
   const b = $("#verAct"); b.disabled = s === "checking" || s === "downloading";
   b.textContent = s === "available" ? "Update now" : s === "updated" ? "Restart now" : "Check for updates";
 }
 $("#ver").onclick = () => { verDlg(); $("#verDlg").showModal(); };
 $("#appWin").onchange = async e => { appWin = e.target.checked; await api("/api/settings", {app_window: appWin}); toast(appWin ? "Next time it opens in its own window." : "Next time it opens in a normal browser tab."); };
 $("#startup").onchange = async e => { startup = e.target.checked; await api("/api/settings", {startup}); toast(startup ? "Prompt Manager will start with Windows." : "It won't start with Windows anymore."); };
+$("#shortcut").onclick = async () => {
+  const {status, data} = await api("/api/shortcut", {});
+  toast(status === 200 ? data.message : "Couldn't add the shortcut: " + data.error);
+};
 $("#quit").onclick = async () => {
   if (files.some(f => f.dirty || f.saving)) return toast("Still saving, try again in a second.");
   await api("/api/quit", {}); $("#verDlg").close();
@@ -678,6 +683,7 @@ function toast(text, action, fn) {
 const hide = () => $("#toast").classList.remove("on");
 addEventListener("beforeunload", e => { if (files.some(f => f.dirty || f.saving)) { files.filter(f => f.dirty).forEach(save); e.preventDefault(); } });
 
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 load().catch(e => { setStatus("Offline", "err"); banner("Can't reach Prompt Manager. Is pm.py still running?\n" + e.message); });
 </script>
 </body>
