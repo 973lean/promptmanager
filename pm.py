@@ -14,7 +14,7 @@ import json, os, platform, re, secrets, ssl, subprocess, sys, threading, time, u
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "1.4.5"
+VERSION = "1.4.6"
 REPO_RAW = os.environ.get("PM_UPDATE_URL", "https://raw.githubusercontent.com/973lean/promptmanager/main/")
 RELEASE = os.environ.get("PM_RELEASE_URL", "https://github.com/973lean/promptmanager/releases/latest/download/")
 FROZEN = getattr(sys, "frozen", False)  # running as PromptManager.exe
@@ -269,10 +269,28 @@ def make_shortcuts() -> str:
     return "Added Prompt Manager to your desktop and Start menu."
 
 
+def register_link():
+    """Windows: let a promptmanager:// link start the app, so the 'not running' page can offer a Start button."""
+    if os.name != "nt":
+        return
+    try:
+        import winreg
+        cmd = f'"{sys.executable}"' if FROZEN else f'"{Path(sys.executable).with_name("pythonw.exe")}" "{HERE / "pm.py"}"'
+        base = r"Software\Classes\promptmanager"
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, base) as k:
+            winreg.SetValueEx(k, "", 0, winreg.REG_SZ, "URL:Prompt Manager")
+            winreg.SetValueEx(k, "URL Protocol", 0, winreg.REG_SZ, "")
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, base + r"\shell\open\command") as k:
+            winreg.SetValueEx(k, "", 0, winreg.REG_SZ, cmd + " --no-open")
+    except Exception as e:
+        log(f"couldn't register the start link: {e}")
+
+
 SW_JS = """// Shows a friendly page instead of Chrome's error when Prompt Manager isn't running.
 const OFF = "/offline.html";
-self.addEventListener("install", e => { e.waitUntil(caches.open("pm-v1").then(c => c.add(OFF))); self.skipWaiting(); });
-self.addEventListener("activate", e => e.waitUntil(self.clients.claim()));
+self.addEventListener("install", e => { e.waitUntil(caches.open("pm-v2").then(c => c.add(OFF))); self.skipWaiting(); });
+self.addEventListener("activate", e => e.waitUntil(
+  caches.keys().then(ks => Promise.all(ks.filter(k => k !== "pm-v2").map(k => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener("fetch", e => {
   if (e.request.mode === "navigate") e.respondWith(fetch(e.request).catch(() => caches.match(OFF)));
 });
@@ -285,9 +303,11 @@ OFFLINE_HTML = """<!doctype html><html lang="en"><head><meta charset="utf-8"><me
 body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--ink);font:15px/1.6 ui-sans-serif,system-ui,"Segoe UI",sans-serif;padding:24px;box-sizing:border-box}
 main{max-width:420px;text-align:center}h1{font-size:19px;margin:0 0 8px}p{color:var(--muted);margin:0 0 10px}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:8px;animation:p 1.4s infinite}
-@keyframes p{50%{opacity:.25}}</style></head><body><main>
+@keyframes p{50%{opacity:.25}}
+.go{display:inline-block;margin:6px 0 4px;padding:9px 16px;border-radius:8px;background:var(--accent);color:#fff;text-decoration:none;font-weight:600}</style></head><body><main>
 <h1>Prompt Manager isn't running</h1>
-<p>Open <b>PromptManager.exe</b> (or the Prompt Manager shortcut on your desktop). This page opens by itself as soon as it's running.</p>
+<p><a class="go" href="promptmanager://open">Start Prompt Manager</a></p>
+<p>Or open <b>PromptManager.exe</b>. This page opens by itself as soon as it's running.</p>
 <p><span class="dot"></span>Waiting…</p>
 <p style="font-size:13px">Tip: Settings → <b>Start with Windows</b> keeps it ready in the background.</p>
 </main><script>
@@ -539,7 +559,7 @@ def main(argv):
         srv = bind(port, retries=40 if restarted else 1)
     except OSError:
         if already_running(f"http://127.0.0.1:{port}/"):  # double-clicked again: just show the open one
-            return open_ui(f"http://127.0.0.1:{port}/")
+            return open_ui(f"http://127.0.0.1:{port}/") if open_browser else None
         if free_port_from_stuck_copy(port):  # a broken old copy was squatting on it
             try:
                 srv = bind(port, retries=20)
@@ -560,6 +580,7 @@ def main(argv):
     App.port, App.srv = port, srv
     url = f"http://127.0.0.1:{port}/"
     log(f"started {VERSION} on {url} ({'exe' if FROZEN else 'script'})")
+    threading.Thread(target=register_link, daemon=True).start()
     print(f"Prompt Manager {VERSION} → {url}\nfolder {App.dir}\nCtrl+C to quit")
     if FROZEN:  # tidy up after an .exe update
         for f in HERE.glob(Path(sys.executable).stem + ".old*.exe"):
